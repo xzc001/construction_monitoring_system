@@ -96,9 +96,19 @@
             <div class="metric"><div class="v" id="m-elapsed">--</div><div class="k">分析耗时</div></div>
           </div>
         </div>
-        <div class="panel-box">
+        <div class="panel-box" style="margin-bottom:18px">
           <div class="hd">告警事件 <span class="dim" id="alert-count" style="margin-left:auto;font-family:var(--font-mono)"></span></div>
           <div class="alert-list" id="alert-list"></div>
+        </div>
+
+        <div class="panel-box">
+          <div class="hd">告警动作</div>
+          <div class="aa-row">
+            <button class="btn ghost" id="btn-report" disabled>📄 生成事故报告</button>
+            <button class="btn" id="btn-email" disabled>✉ 发送到邮箱</button>
+          </div>
+          <div class="aa-status" id="aa-status"></div>
+          <div class="aa-hint" id="aa-hint"></div>
         </div>
       </div>
     </section>

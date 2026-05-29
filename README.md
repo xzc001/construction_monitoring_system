@@ -92,13 +92,47 @@ explicit = true
 
 ---
 
+## 告警动作(事故报告 / 邮件)
+
+检测到告警后,系统可执行告警动作。当前已实现:
+
+- **事故报告 PDF**:含事故概要、自然语言描述、现场证据图、三态时间线、处置建议、数据附录。
+  在配电箱页点「生成事故报告」即可下载,或命令行/接口生成。
+- **邮件告警**:把报告作为附件、截图内嵌正文,通过 SMTP 发送给指定收件人。
+
+> 架构上是一个**通用告警层** `src/alerting/`(事件 → 分发器 → 渠道),任何识别模块都能复用。
+> 规划中:浏览器/服务器语音播报、企业微信/钉钉/Bark 手机推送。
+
+### 配置邮件(以 QQ 邮箱为例)
+
+邮件密钥**不入库**。复制模板再填写:
+
+```bash
+cp config/alerting.example.yaml config/alerting.yaml
+# 然后编辑 config/alerting.yaml 填入授权码(此文件已被 .gitignore)
+```
+
+QQ 邮箱要用 **「授权码」**(不是登录密码),获取方式:
+
+1. 电脑浏览器登录 **mail.qq.com**
+2. **设置 → 账号**
+3. 找到「IMAP/SMTP服务」→ **开启**
+4. 按提示**用手机发一条短信**验证
+5. 验证后会显示一串 **16 位授权码**,复制填进 `config/alerting.yaml` 的 `smtp_password`
+
+填好后重启服务,配电箱页的「发送到邮箱」按钮即可用。
+
+---
+
 ## 项目结构
 
 ```
 common/
 ├── run_panel.py              配电箱模块命令行入口
-├── requirements.txt
+├── pyproject.toml / uv.lock  uv 依赖管理
 ├── yolov8n.pt                人体检测模型(随仓库提供)
+├── config/
+│   └── alerting.example.yaml 告警渠道配置模板(复制为 alerting.yaml 填密钥)
 ├── data/samples/             内置演示样本(源视频 + samples.json 清单)
 ├── webapp/
 │   ├── server.py             FastAPI 后端(API + 静态托管 + 后台分析)
@@ -109,8 +143,9 @@ common/
 │   ├── visualizer.py         画框 + 中文渲染 + HUD
 │   ├── detectors/            base / person / panel_door
 │   ├── rules/                通用基建: geometry / roi / tracker
+│   ├── alerting/             告警动作层: 事件/报告/邮件/分发器(通用, 各模块复用)
 │   └── modules/
-│       └── panel/            ★ 配电箱模块(自包含: config/detector/rules/pipeline)
+│       └── panel/            ★ 配电箱模块(自包含: config/detector/rules/pipeline/incident)
 └── runs/                     运行产物(gitignore, 不入库)
 ```
 
@@ -179,3 +214,6 @@ common/
 | GET | `/api/result/{run}` | 某次分析结果(时间轴 / 告警 / 视频地址) |
 | POST | `/api/panel/analyze` | 上传视频 → 后台分析,返回 `job_id` |
 | GET | `/api/jobs/{job_id}` | 轮询分析进度 |
+| GET | `/api/alerting/status` | 各告警渠道是否已配置可用 |
+| POST | `/api/panel/report` | 生成事故报告 PDF,返回下载地址 |
+| POST | `/api/alerting/send` | 生成报告并通过已启用渠道(邮件)发送 |

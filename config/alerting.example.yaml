@@ -1,0 +1,22 @@
+# 告警渠道配置模板
+# ----------------------------------------------------------------------
+# 用法: 复制本文件为同目录下的 alerting.yaml, 填入真实信息。
+#       alerting.yaml 已被 .gitignore, 不会上传 GitHub, 放心填密钥。
+# ----------------------------------------------------------------------
+
+email:
+  enabled: true
+
+  # 以 QQ 邮箱为例(其它邮箱改 host/port 即可):
+  smtp_host: smtp.qq.com
+  smtp_port: 465                 # 465=SSL(推荐); 587=STARTTLS
+
+  smtp_user: "你的QQ号@qq.com"    # 发件邮箱
+  smtp_password: ""              # ★ QQ 邮箱"授权码"(不是登录密码!)
+                                 #   获取: mail.qq.com → 设置 → 账号 →
+                                 #   开启 IMAP/SMTP 服务 → 手机发短信验证 → 得到授权码
+
+  sender_name: "施工现场AI监控"
+
+  recipients:                    # 收件人(可多个)
+    - "你的QQ号@qq.com"

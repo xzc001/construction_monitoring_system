@@ -179,6 +179,18 @@
 .progress .bar { height: 100%; width: 0; background: var(--amber); transition: width .25s; box-shadow: 0 0 12px var(--amber); }
 .up-status { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 8px; }
 
+/* ---- 告警动作 ---- */
+.aa-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn.ghost { background: transparent; color: var(--amber); border: 1px solid var(--amber); }
+.btn.ghost:hover { background: var(--amber-soft); box-shadow: none; }
+.aa-row .btn { flex: 1; font-size: 12px; padding: 11px 12px; }
+.aa-status { font-family: var(--font-mono); font-size: 12px; margin-top: 12px; min-height: 16px; }
+.aa-status.ok { color: var(--green); }
+.aa-status.err { color: var(--red); }
+.aa-status.busy { color: var(--amber); }
+.aa-hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 8px; line-height: 1.6; }
+.aa-hint a { color: var(--amber); }
+
 /* 截图灯箱 */
 .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 1000; display: none; place-items: center; padding: 40px; }
 .lightbox.show { display: grid; }

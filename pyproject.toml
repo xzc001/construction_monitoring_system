@@ -16,6 +16,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "python-multipart>=0.0.9",
     "imageio-ffmpeg>=0.5",
+    "reportlab>=4.5.1",
 ]
 
 [tool.uv]

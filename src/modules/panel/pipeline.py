@@ -173,6 +173,14 @@ class PanelPipeline:
             "alerts": all_events,
             "n_alerts": len(all_events),
             "timeline": timeline,   # 逐帧状态, 网站画三态时间轴
+            "config": {             # 检测参数(报告附录 / 复现用)
+                "panel_rois": self.cfg.panel_rois,
+                "threshold": self.cfg.threshold,
+                "safety_zone_ratio": self.cfg.safety_zone_ratio,
+                "attended_grace": self.cfg.attended_grace,
+                "persist_alert": self.cfg.persist_alert,
+                "imgsz": self.cfg.imgsz,
+            },
         }
         events_path.write_text(
             json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")

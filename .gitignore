@@ -9,6 +9,9 @@ venv/
 # 运行产物(标注视频/截图/转码), 不入库
 runs/
 
+# 告警密钥配置(SMTP 授权码等), 绝不入库; 只提交 alerting.example.yaml
+config/alerting.yaml
+
 # 上传的临时文件
 *.tmp
 

@@ -21,3 +21,6 @@ python-multipart>=0.0.9
 
 # 视频转码(浏览器 H.264 播放)
 imageio-ffmpeg>=0.5
+
+# 事故报告 PDF
+reportlab>=4.5

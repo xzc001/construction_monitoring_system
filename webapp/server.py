@@ -37,7 +37,11 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from datetime import datetime
+
 from src.modules.panel import PanelConfig, PanelPipeline
+from src.modules.panel.incident import build_panel_event
+from src.alerting import AlertDispatcher
 from webapp.media import ensure_h264
 
 RUNS = ROOT / "runs"
@@ -241,6 +245,47 @@ def get_job(job_id: str):
     if not job:
         raise HTTPException(404, "job 不存在")
     return job
+
+
+# ---------------- 告警动作(报告 / 邮件) ----------------
+
+@app.get("/api/alerting/status")
+def alerting_status():
+    """各告警渠道是否已配置可用(前端据此启用按钮)。"""
+    return AlertDispatcher().status()
+
+
+def _gen_report(run: str, alert_idx: int, location: str):
+    run_dir = RUNS / run
+    if not (run_dir / "events.json").exists():
+        raise HTTPException(404, f"结果不存在: {run}")
+    try:
+        event = build_panel_event(run_dir, alert_idx, location=location or "演示点位")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    pdf = run_dir / "incident_report.pdf"
+    now = datetime.now()
+    report_no = f"PANEL-{now:%Y%m%d}-{run[-4:]}"
+    AlertDispatcher().generate_report(
+        event, pdf, report_no=report_no, generated_at=now.strftime("%Y-%m-%d %H:%M"))
+    return event, pdf
+
+
+@app.post("/api/panel/report")
+def panel_report(run: str = Form(...), alert_idx: int = Form(0),
+                 location: str = Form("")):
+    """生成事故报告 PDF, 返回可下载地址。"""
+    _, pdf = _gen_report(run, alert_idx, location)
+    return {"report_url": f"/media/{run}/{pdf.name}"}
+
+
+@app.post("/api/alerting/send")
+def alerting_send(run: str = Form(...), alert_idx: int = Form(0),
+                  location: str = Form("")):
+    """生成报告并通过已启用渠道(邮件)发送。"""
+    event, pdf = _gen_report(run, alert_idx, location)
+    results = AlertDispatcher().dispatch(event, pdf=pdf)
+    return {"results": results, "report_url": f"/media/{run}/{pdf.name}"}
 
 
 # ---------------- 页面 + 静态 ----------------

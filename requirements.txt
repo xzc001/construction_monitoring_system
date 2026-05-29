@@ -1,0 +1,23 @@
+# 施工现场 AI 监控 —— 配电箱模块 + 展示网站
+#
+# 安装:
+#   1) 先装 PyTorch (按你的 CUDA 版本, 或 CPU 版):
+#        GPU(CUDA 12.x):  pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#        CPU:             pip install torch torchvision
+#   2) 再装其余依赖:
+#        pip install -r requirements.txt
+
+# 计算机视觉 / 推理
+ultralytics>=8.4
+opencv-python>=4.10
+numpy>=1.26
+pillow>=10.0
+pyyaml>=6.0
+
+# Web 后端
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+
+# 视频转码(浏览器 H.264 播放)
+imageio-ffmpeg>=0.5

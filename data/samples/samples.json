@@ -1,0 +1,12 @@
+[
+  {
+    "id": "panel_storyline",
+    "title": "配电箱三态完整演示",
+    "subtitle": "门关 → 有人维修 → 人离开门未关(告警)",
+    "video": "panel_storyline.mp4",
+    "panel_roi": "195,611,477,790",
+    "threshold": 95.0,
+    "grace": 2.0,
+    "persist": 1.5
+  }
+]

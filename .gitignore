@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# 运行产物(标注视频/截图/转码), 不入库
+runs/
+
+# 上传的临时文件
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+.DS_Store

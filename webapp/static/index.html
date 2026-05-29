@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>施工现场 AI 智能监控系统</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">◈</span> 施工现场 AI 智能监控系统</div>
+    <div class="sep"></div>
+    <div class="stat"><span class="live-dot"></span> 系统在线</div>
+    <div class="stat mono" id="clock">--:--:--</div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="scan"></div>
+      <div class="eyebrow reveal">CONSTRUCTION SITE · COMPUTER VISION SAFETY</div>
+      <h1 class="reveal" style="animation-delay:.08s">
+        让每一处工地隐患<br /><span class="accent">被算法第一时间看见</span>
+      </h1>
+      <p class="lead reveal" style="animation-delay:.18s">
+        基于计算机视觉的施工现场安全监控平台。无需改造现有摄像头,
+        以业务规则驱动告警 —— 只在<strong style="color:var(--text-bright)">真正的违规</strong>发生时报警,
+        而不是简单地"看到就报"。
+      </p>
+      <div class="hero-stats reveal" style="animation-delay:.28s">
+        <div class="item"><div class="num" id="stat-online">1<small> 项</small></div><div class="lbl">已上线能力</div></div>
+        <div class="item"><div class="num">~28<small> FPS</small></div><div class="lbl">实时推理速度</div></div>
+        <div class="item"><div class="num">0<small> 误报</small></div><div class="lbl">维修场景状态闪烁</div></div>
+      </div>
+    </section>
+
+    <div class="section-head reveal">
+      <h2>能力矩阵</h2>
+      <span class="count" id="mod-count"></span>
+    </div>
+    <section class="matrix" id="matrix"><!-- JS 注入 --></section>
+
+    <footer class="foot">
+      <span>施工现场 AI 智能监控系统 · 演示环境</span>
+      <span class="sep"></span>
+      <span id="foot-time"></span>
+    </footer>
+  </main>
+
+  <script src="/static/js/common.js"></script>
+  <script src="/static/js/index.js"></script>
+</body>
+</html>

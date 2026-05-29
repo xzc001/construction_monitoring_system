@@ -1,0 +1,161 @@
+# 施工现场 AI 智能监控系统
+
+基于计算机视觉的施工现场安全监控平台。无需改造现有摄像头,以**业务规则驱动告警**——
+只在真正的违规发生时报警,而不是"看到就报"。
+
+本仓库是一个**可扩展的功能平台**:已上线 **配电箱门未关监测** 模块,
+其他开发者可按下方《新增功能模块》指南,在同一个网站上挂载新的检测能力。
+
+![能力矩阵](docs/preview-home.png)
+
+![配电箱模块页](docs/preview-panel.png)
+
+---
+
+## 快速开始
+
+### 1. 环境
+
+需要 Python 3.10+。先装 PyTorch(按你的硬件二选一):
+
+```bash
+# GPU (CUDA 12.x)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# 或 CPU
+pip install torch torchvision
+```
+
+再装其余依赖:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. 启动网站
+
+```bash
+python -m uvicorn webapp.server:app --host 127.0.0.1 --port 8000
+```
+
+浏览器打开 **http://127.0.0.1:8000**
+
+> 首次启动会自动用内置样本视频生成一次演示结果(约 20–40 秒,仅首次);
+> 之后秒开。模型 `yolov8n.pt` 已随仓库提供。
+
+### 3. 命令行直接出标注视频(可选)
+
+```bash
+python run_panel.py --video data/samples/panel_storyline.mp4 --panel_roi "195,611,477,790" --out demo
+# 输出: runs/demo/annotated.mp4 + events.json
+```
+
+---
+
+## 配电箱模块的业务逻辑
+
+配电箱长时间敞开是重大触电隐患,但"门开着"本身不一定违规。本模块分三态:
+
+| 状态 | 含义 | 处理 |
+|---|---|---|
+| 🟢 门已关 | 合规 | 不告警 |
+| 🟡 门开 + 有人 | 维修中,人员值守 | 不告警 |
+| 🔴 门开 + 持续无人 | 无人值守 | **告警** |
+
+关键实现:
+- **门开/关**:对配电箱 ROI 区域算灰度均值,低于阈值=露出黑色内部=门开(无需训练模型)。
+- **维修中 / 无人值守**:门框周围扩出"安全区",看是否有人体落在其中。
+- **防闪烁**:`PanelStateSmoother` 时间迟滞——有人出现后保持"维修中"一个宽限期,
+  吸收人体漏检/短暂走开,避免状态在黄/红之间抖动。
+
+> ⚠️ ROI 坐标 `195,611,477,790` 是针对内置样本(1920×1080 固定机位)标定的。
+> 换摄像头需重新标定 ROI 和阈值。
+
+---
+
+## 项目结构
+
+```
+common/
+├── run_panel.py              配电箱模块命令行入口
+├── requirements.txt
+├── yolov8n.pt                人体检测模型(随仓库提供)
+├── data/samples/             内置演示样本(源视频 + samples.json 清单)
+├── webapp/
+│   ├── server.py             FastAPI 后端(API + 静态托管 + 后台分析)
+│   ├── media.py              mp4v → H.264 转码(浏览器播放)
+│   └── static/               前端(index.html 首页 / panel.html 模块页 / css / js)
+├── src/
+│   ├── types.py              Detection / Violation / Alert 数据结构
+│   ├── visualizer.py         画框 + 中文渲染 + HUD
+│   ├── detectors/            base / person / panel_door
+│   ├── rules/                通用基建: geometry / roi / tracker
+│   └── modules/
+│       └── panel/            ★ 配电箱模块(自包含: config/detector/rules/pipeline)
+└── runs/                     运行产物(gitignore, 不入库)
+```
+
+---
+
+## 新增功能模块(给协作开发者)
+
+平台按"**一个功能 = 一个自包含模块**"组织。新增能力(如安全帽、吸烟)的步骤:
+
+### 第 1 步:建模块
+
+在 `src/modules/` 下新建子包,例如 `src/modules/helmet/`,内含:
+
+- `config.py` —— 一个 `dataclass` 收纳全部参数
+- `pipeline.py` —— 一个类,实现:
+
+  ```python
+  def process_video(self, video_in, out_dir, progress_cb=None) -> dict
+  ```
+
+  在 `out_dir` 写出 `annotated.mp4`、`events.json`、`violations/*.jpg`,
+  并返回 summary 字典。**为了能接入网站**,`events.json` 至少包含:
+
+  ```jsonc
+  {
+    "module": "helmet",
+    "fps": 25.0, "width": 1920, "height": 1080, "total_frames": 600,
+    "elapsed_seconds": 20.0,
+    "n_alerts": 3,
+    "cumulative": { "...": 0 },
+    "alerts": [ { "kind": "...", "track_id": 1, "frame_idx": 100,
+                  "time_seconds": 4.0, "screenshot": "alert_xxx.jpg" } ],
+    "timeline": ["...", "..."]   // 可选: 逐帧状态, 用于网站时间轴
+  }
+  ```
+
+  可直接复用共享基建:`src.detectors.PersonDetector`、`src.rules.ViolationTracker`、
+  `src.visualizer` 的画框函数。**不要**在模块里耦合其它模块的逻辑。
+
+### 第 2 步:注册到网站
+
+编辑 `webapp/server.py` 的 `MODULES` 列表,把你的模块状态改成 `online` 并给个 `href`:
+
+```python
+{"id": "helmet", "name": "未戴安全帽识别", "tagline": "...",
+ "status": "online", "metrics": [...], "href": "/helmet"},
+```
+
+### 第 3 步:加接口 + 页面
+
+- 参照 `analyze` / `get_result` 增加你的分析与结果接口(或直接复用 `/api/result/{run}`)。
+- 复制 `webapp/static/panel.html` + `panel.js` 作模板,改成你的功能页。
+
+完成后,首页能力矩阵会自动把你的卡片显示为"已上线"并可点进。
+
+---
+
+## API
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/` | 首页 · 能力矩阵 |
+| GET | `/panel` | 配电箱模块演示页 |
+| GET | `/api/modules` | 功能模块清单 |
+| GET | `/api/samples` | 内置演示样本 |
+| GET | `/api/result/{run}` | 某次分析结果(时间轴 / 告警 / 视频地址) |
+| POST | `/api/panel/analyze` | 上传视频 → 后台分析,返回 `job_id` |
+| GET | `/api/jobs/{job_id}` | 轮询分析进度 |

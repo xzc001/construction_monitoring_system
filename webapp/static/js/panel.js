@@ -43,6 +43,10 @@ async function loadResult(run) {
   video.src = r.video_url;
   video.load();
 
+  // 重置语音播报状态(换样本/重载视频)
+  if (typeof spokenAlerts !== "undefined") { spokenAlerts.clear(); lastVoiceT = 0; }
+  if (window.speechSynthesis) speechSynthesis.cancel();
+
   // 指标
   document.getElementById("m-dur").textContent = r.duration_s ?? "--";
   const mAlert = document.getElementById("m-alert");
@@ -135,11 +139,80 @@ function currentSegmentState(t) {
 
 video.addEventListener("timeupdate", () => {
   if (!RESULT || !video.duration) return;
-  const ratio = video.currentTime / video.duration;
+  const t = video.currentTime;
+  const ratio = t / video.duration;
   playhead.style.left = ratio * 100 + "%";
-  stTime.textContent = `${fmtTime(video.currentTime)} / ${fmtTime(video.duration)}`;
-  setStatus(currentSegmentState(video.currentTime), video.currentTime);
+  stTime.textContent = `${fmtTime(t)} / ${fmtTime(video.duration)}`;
+  setStatus(currentSegmentState(t), t);
+  checkVoiceTrigger(t);
 });
+
+// ====================== 浏览器语音告警 ======================
+const VOICE_MSG = "注意，请关闭配电箱";
+const voiceToggle = document.getElementById("voice-toggle");
+const voiceSupported = "speechSynthesis" in window;
+let voiceEnabled = voiceSupported;
+let spokenAlerts = new Set();
+let lastVoiceT = 0;
+
+if (!voiceSupported) {
+  voiceToggle.classList.remove("on");
+  voiceToggle.textContent = "🔇 浏览器不支持语音";
+  voiceToggle.disabled = true;
+}
+
+// 预加载中文语音(部分浏览器异步加载)
+function pickZhVoice() {
+  const vs = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  return vs.find((v) => (v.lang || "").toLowerCase().startsWith("zh")) || null;
+}
+if (voiceSupported && speechSynthesis.onvoiceschanged !== undefined) {
+  speechSynthesis.onvoiceschanged = pickZhVoice;
+}
+
+function speak(text) {
+  if (!voiceSupported || !voiceEnabled) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "zh-CN";
+  const v = pickZhVoice();
+  if (v) u.voice = v;
+  u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+  u.onstart = () => voiceToggle.classList.add("speaking");
+  u.onend = () => voiceToggle.classList.remove("speaking");
+  u.onerror = () => voiceToggle.classList.remove("speaking");
+  speechSynthesis.speak(u);
+}
+
+// 播放进度跨过告警时刻 → 播报一次(回放/拖回会重置)
+function checkVoiceTrigger(t) {
+  if (t < lastVoiceT - 0.4) spokenAlerts.clear();   // 拖回 / 重播
+  if (voiceEnabled && RESULT && RESULT.alerts) {
+    RESULT.alerts.forEach((a, i) => {
+      if (!spokenAlerts.has(i) && lastVoiceT <= a.time_seconds && t >= a.time_seconds) {
+        spokenAlerts.add(i);
+        speak(VOICE_MSG);
+      }
+    });
+  }
+  lastVoiceT = t;
+}
+
+voiceToggle.onclick = () => {
+  if (!voiceSupported) return;
+  voiceEnabled = !voiceEnabled;
+  voiceToggle.classList.toggle("on", voiceEnabled);
+  voiceToggle.textContent = voiceEnabled ? "🔊 语音告警 开" : "🔇 语音告警 关";
+  if (voiceEnabled) {
+    speak("语音告警已开启");   // 同时借用户手势"解锁"浏览器语音权限
+  } else {
+    speechSynthesis.cancel();
+    voiceToggle.classList.remove("speaking");
+  }
+};
+
+// 拖动进度条 / 切换样本时, 取消正在进行的播报
+video.addEventListener("seeking", () => { if (voiceSupported) speechSynthesis.cancel(); });
 
 // ---------- 灯箱 ----------
 const lightbox = document.getElementById("lightbox");

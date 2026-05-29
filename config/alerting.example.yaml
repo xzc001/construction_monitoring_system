@@ -9,7 +9,7 @@ email:
 
   # 以 QQ 邮箱为例(其它邮箱改 host/port 即可):
   smtp_host: smtp.qq.com
-  smtp_port: 465                 # 465=SSL(推荐); 587=STARTTLS
+  smtp_port: 587                 # 587=STARTTLS(实测更稳); 465=SSL(部分网络握手失败)
 
   smtp_user: "你的QQ号@qq.com"    # 发件邮箱
   smtp_password: ""              # ★ QQ 邮箱"授权码"(不是登录密码!)

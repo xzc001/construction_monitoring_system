@@ -88,11 +88,12 @@ class EmailChannel(Channel):
             else:
                 server = smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=20)
                 server.starttls()
+            server.login(cfg.smtp_user, cfg.smtp_password)
+            server.sendmail(cfg.smtp_user, cfg.recipients, msg.as_string())
             try:
-                server.login(cfg.smtp_user, cfg.smtp_password)
-                server.sendmail(cfg.smtp_user, cfg.recipients, msg.as_string())
-            finally:
-                server.quit()
+                server.quit()   # 关闭失败不影响"已发送"结论
+            except Exception:
+                pass
             return {"ok": True, "detail": f"已发送至 {', '.join(cfg.recipients)}"}
         except Exception as e:  # noqa: BLE001
-            return {"ok": False, "detail": f"发送失败: {e}"}
+            return {"ok": False, "detail": f"发送失败: {type(e).__name__}: {e}"}

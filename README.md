@@ -14,40 +14,60 @@
 
 ## 快速开始
 
-### 1. 环境
+本项目用 [**uv**](https://docs.astral.sh/uv/) 管理依赖 —— 一条命令装好一切,
+**不污染你电脑的全局 Python 环境**,连 Python 解释器都由 uv 自动准备。
 
-需要 Python 3.10+。先装 PyTorch(按你的硬件二选一):
+### 1. 装 uv(只需一次)
 
 ```bash
-# GPU (CUDA 12.x)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-# 或 CPU
-pip install torch torchvision
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-再装其余依赖:
+### 2. 同步依赖
+
+在项目目录下:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
-### 2. 启动网站
+uv 会自动:下载合适的 Python、创建项目专属 `.venv`、按 `uv.lock` 装好全部依赖
+(默认 **CPU 版 PyTorch**,任何机器都能装上即跑)。
+
+### 3. 启动网站
 
 ```bash
-python -m uvicorn webapp.server:app --host 127.0.0.1 --port 8000
+uv run uvicorn webapp.server:app --host 127.0.0.1 --port 8000
 ```
 
 浏览器打开 **http://127.0.0.1:8000**
 
-> 首次启动会自动用内置样本视频生成一次演示结果(约 20–40 秒,仅首次);
-> 之后秒开。模型 `yolov8n.pt` 已随仓库提供。
+> 首次启动会自动用内置样本视频生成一次演示结果(CPU 上约 1–3 分钟,GPU 数十秒,仅首次);
+> 之后秒开。人体检测模型 `yolov8n.pt` 已随仓库提供。
 
-### 3. 命令行直接出标注视频(可选)
+### 4. 命令行直接出标注视频(可选)
 
 ```bash
-python run_panel.py --video data/samples/panel_storyline.mp4 --panel_roi "195,611,477,790" --out demo
+uv run python run_panel.py --video data/samples/panel_storyline.mp4 --panel_roi "195,611,477,790" --out demo
 # 输出: runs/demo/annotated.mp4 + events.json
 ```
+
+### GPU 加速(可选)
+
+默认装的是 CPU 版 PyTorch,通用但较慢。若你有 NVIDIA 显卡,想用 GPU 加速,
+把 `pyproject.toml` 里 `[[tool.uv.index]]` 的 url 改成对应 CUDA 版本后重新 `uv sync`,例如:
+
+```toml
+[[tool.uv.index]]
+name = "pytorch-cpu"        # 名字可不改
+url = "https://download.pytorch.org/whl/cu121"   # 改成你的 CUDA 版本: cu121 / cu124 / cu128 ...
+explicit = true
+```
+
+> 不用 uv 也行:本仓库保留了 `requirements.txt`,可走传统 `pip install -r requirements.txt`。
 
 ---
 

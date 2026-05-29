@@ -1,0 +1,34 @@
+[project]
+name = "construction-monitoring-system"
+version = "0.1.0"
+description = "施工现场 AI 智能监控系统 —— 配电箱模块 + 展示网站"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.2",
+    "torchvision>=0.17",
+    "ultralytics>=8.4",
+    "opencv-python>=4.10",
+    "numpy>=1.26",
+    "pillow>=10.0",
+    "pyyaml>=6.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "imageio-ffmpeg>=0.5",
+]
+
+[tool.uv]
+# 本项目是"应用"而非可安装的库, 不需要构建自身。
+package = false
+
+# 默认安装 CPU 版 PyTorch —— 保证任何机器(无显卡也行)`uv sync` 都能装上即跑。
+# 需要 NVIDIA GPU 加速请见 README《GPU 加速》一节。
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

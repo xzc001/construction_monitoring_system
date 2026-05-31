@@ -41,6 +41,7 @@ class IntrusionPipeline:
     def process_video(self, video_in: Path, out_dir: Path,
                       progress_cb=None) -> dict:
         """progress_cb: 可选回调 fn(frame_idx, total), 供网站进度条用。"""
+        video_in = Path(video_in)
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         violations_dir = out_dir / "violations"

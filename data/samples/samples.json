@@ -11,18 +11,33 @@
     "persist": 1.5
   },
   {
-    "id": "intrusion_storyline",
+    "id": "intrusion_equipment",
     "module": "intrusion",
-    "title": "危险区域闯入演示",
-    "subtitle": "无人 → 人员闯入禁区(告警) → 离开",
-    "video": "panel_storyline.mp4",
+    "title": "未授权闯入设备作业区",
+    "subtitle": "无人 → 人员闯入中央设备区(告警) → 离开",
+    "video": "intrusion_equipment.mp4",
     "zones": [
       {
-        "name": "配电作业危险区",
+        "name": "中央设备作业区",
         "kind": "no_entry",
-        "polygon": [[150, 640], [820, 640], [820, 1080], [150, 1080]]
+        "polygon": [[820, 470], [1460, 470], [1460, 775], [820, 775]]
       }
     ],
-    "persist": 1.5
+    "persist": 1.2
+  },
+  {
+    "id": "intrusion_walkway",
+    "module": "intrusion",
+    "title": "走道违规·闯入料架区",
+    "subtitle": "人员走入料架危险区, 持续停留触发告警",
+    "video": "intrusion_walkway.mp4",
+    "zones": [
+      {
+        "name": "料架危险区",
+        "kind": "no_entry",
+        "polygon": [[1320, 540], [1760, 540], [1760, 850], [1320, 850]]
+      }
+    ],
+    "persist": 1.2
   }
 ]

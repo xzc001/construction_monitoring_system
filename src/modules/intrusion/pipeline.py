@@ -18,8 +18,7 @@ from pathlib import Path
 import cv2
 
 from ...detectors.person import PersonDetector
-from ...rules.tracker import ViolationTracker
-from ...types import Alert, Violation
+from ...types import Alert
 from ...visualizer import draw_alert_banner, draw_box, draw_hud, draw_roi
 from .config import IntrusionConfig
 from .rules import IntrusionStateSmoother, evaluate_frame
@@ -60,18 +59,21 @@ class IntrusionPipeline:
         print(f"   监控区域: " + "; ".join(
             f"{z.name}({z.kind})" for z in self.cfg.zones))
 
-        tracker = ViolationTracker(
-            persist_frames=max(1, int(self.cfg.persist_alert * fps)),
-            match_dist=max(W, H) // 4,
-        )
         smoother = IntrusionStateSmoother(
             grace_frames=max(1, int(self.cfg.state_grace * fps)))
+        persist_frames = max(1, int(self.cfg.persist_alert * fps))
 
         writer = cv2.VideoWriter(str(video_out_path),
                                  cv2.VideoWriter_fourcc(*"mp4v"), fps, (W, H))
         all_events: list[dict] = []
         cumulative = {"person": 0, "intrusion": 0}
         timeline: list[str] = []           # 逐帧最坏状态(网站画时间轴)
+        # 告警以"占用时段"为单位: 平滑后时间轴上一条连续红段 = 一次告警。
+        # 不再按逐人轨迹计数, 避免同一次闯入因中景检测拆成多条轨迹而重复告警。
+        episode_active = False             # 当前是否处于一段闯入中
+        episode_start = 0                  # 本段闯入起始帧
+        episode_alerted = False            # 本段是否已报过
+        episode_seq = 0                    # 闯入段序号(=事件号)
         frame_idx = 0
         t0 = time.time()
 
@@ -86,19 +88,33 @@ class IntrusionPipeline:
             # 时间迟滞平滑: 吸收瞬时漏检, 让时间轴/状态条连续不闪烁
             state = smoother.smooth(raw_state, frame_idx)
             # 只有落在"禁区(no_entry)"里的人才标红/告警; 安全通道里的人保持蓝色
-            hit_persons = {id(p) for p, z in hits if z.kind == "no_entry"}
-
-            # 只有"闯入禁区(no_entry)"才进 tracker → 告警
-            violations = [
-                Violation(kind="roi_intrusion", detection=p, person=p,
-                          note=z.name)
-                for p, z in hits if z.kind == "no_entry"
-            ]
-            new_alerts = tracker.update(violations, frame_idx, fps)
+            no_entry_hits = [(p, z) for p, z in hits if z.kind == "no_entry"]
+            hit_persons = {id(p) for p, z in no_entry_hits}
 
             cumulative["person"] += len(persons)
-            cumulative["intrusion"] += len(violations)
+            cumulative["intrusion"] += len(no_entry_hits)
             timeline.append(state)
+
+            # ---- 占用时段告警: 一段连续闯入只报一次 ----
+            new_alerts: list[Alert] = []
+            if state == "intrusion":
+                if not episode_active:
+                    episode_active = True
+                    episode_start = frame_idx
+                    episode_alerted = False
+                # 持续超过阈值, 且本帧画面里确有闯入者 → 取最显眼者报一次
+                if (not episode_alerted and no_entry_hits
+                        and frame_idx - episode_start >= persist_frames):
+                    p = max((p for p, _ in no_entry_hits), key=lambda d: d.area)
+                    episode_seq += 1
+                    episode_alerted = True
+                    new_alerts.append(Alert(
+                        kind="roi_intrusion", track_id=episode_seq,
+                        frame_idx=frame_idx,
+                        time_seconds=round(frame_idx / max(fps, 1), 2),
+                        center=p.center, bbox=p.bbox, note="危险区域闯入"))
+            else:
+                episode_active = False     # 离开禁区, 下次再进算新的一段
 
             # ---- 可视化 ----
             for z in self.cfg.zones:

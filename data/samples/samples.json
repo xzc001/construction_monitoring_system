@@ -114,5 +114,22 @@
     ],
     "persist": 1.2,
     "grace": 1.0
+  },
+  {
+    "id": "ebike_parking",
+    "module": "ebike",
+    "title": "电动车违规停放演示",
+    "subtitle": "消防通道禁停区 → 电动车停入红框告警(区外蓝框=正常停放,展示分级)",
+    "video": "ebike_parking.mp4",
+    "zones": [
+      {
+        "name": "消防通道禁停区",
+        "kind": "no_park",
+        "polygon": [[0, 90], [470, 60], [470, 480], [0, 480]]
+      }
+    ],
+    "persist": 1.5,
+    "grace": 1.5,
+    "ebike_conf": 0.30
   }
 ]

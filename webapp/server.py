@@ -53,6 +53,8 @@ from src.modules.vest import VestConfig, VestPipeline
 from src.modules.vest.incident import build_vest_event
 from src.modules.height import HeightConfig, HeightPipeline
 from src.modules.height.incident import build_height_event
+from src.modules.ebike import EbikeConfig, EbikePipeline
+from src.modules.ebike.incident import build_ebike_event
 from src.alerting import AlertDispatcher
 from webapp.media import ensure_h264
 
@@ -148,6 +150,18 @@ MODULES = [
         ],
         "href": "/height",
     },
+    {
+        "id": "ebike",
+        "name": "电动车违规停放监测",
+        "tagline": "划定消防/疏散通道禁停区, 电动车驶入停放并持续即告警",
+        "status": "online",
+        "metrics": [
+            {"label": "判定方式", "value": "电动车检测 + 禁停 ROI"},
+            {"label": "类别", "value": "电动车 / 自行车"},
+            {"label": "误报抑制", "value": "持续时长 + 时间迟滞"},
+        ],
+        "href": "/ebike",
+    },
 ]
 
 STATE_CN = {
@@ -174,6 +188,9 @@ STATE_CN = {
     # 高处作业临边模块
     "no_edge": "安全 · 无人临边作业",
     "edge_work": "高处临边作业 · 风险",
+    # 电动车违规停放模块
+    "no_violation": "正常 · 禁停区无车",
+    "illegal_park": "违规 · 电动车停入禁停区",
 }
 
 
@@ -287,6 +304,12 @@ def build_pipeline_for_sample(s: dict):
             state_grace=s.get("grace", 1.0),
             context_person_conf=s.get("context_conf", 0.6))
         return HeightPipeline(cfg)
+    if module == "ebike":
+        cfg = EbikeConfig.from_zone_specs(
+            s["zones"], persist_alert=s.get("persist", 1.5),
+            state_grace=s.get("grace", 1.0),
+            ebike_conf=s.get("ebike_conf", 0.30))
+        return EbikePipeline(cfg)
     raise ValueError(f"未知模块: {module}")
 
 
@@ -530,6 +553,35 @@ async def height_analyze(
     return {"job_id": job_id, "run": run}
 
 
+@app.post("/api/ebike/analyze")
+async def ebike_analyze(
+    zone_roi: str = Form(...),
+    name: str = Form("电动车禁停区"),
+    persist: float = Form(1.5),
+    grace: float = Form(1.0),
+    file: UploadFile = File(...),
+):
+    suffix = Path(file.filename or "upload.mp4").suffix or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    try:
+        cfg = EbikeConfig.from_roi_string(
+            zone_roi, kind="no_park", name=name,
+            persist_alert=persist, state_grace=grace)
+    except Exception:
+        raise HTTPException(400, "zone_roi 格式应为 x1,y1,x2,y2(多个用 ; 分隔)")
+
+    job_id = uuid.uuid4().hex[:12]
+    run = f"web_{job_id}"
+    with _lock:
+        JOBS[job_id] = {"status": "running", "progress": 0.0, "run": run}
+    threading.Thread(target=_run_job,
+                     args=(job_id, EbikePipeline(cfg), Path(tmp.name), run),
+                     daemon=True).start()
+    return {"job_id": job_id, "run": run}
+
+
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str):
     with _lock:
@@ -557,6 +609,7 @@ EVENT_BUILDERS = {
     "fire": build_fire_event,
     "vest": build_vest_event,
     "height": build_height_event,
+    "ebike": build_ebike_event,
 }
 
 
@@ -644,6 +697,11 @@ def vest_page():
 @app.get("/height")
 def height_page():
     return FileResponse(STATIC / "height.html")
+
+
+@app.get("/ebike")
+def ebike_page():
+    return FileResponse(STATIC / "ebike.html")
 
 
 app.mount("/media", StaticFiles(directory=str(RUNS)), name="media")

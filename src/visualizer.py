@@ -33,6 +33,7 @@ COLOR_ALERT_BANNER = (0, 0, 255)        # 红
 ROI_COLORS = {
     "no_entry":         (0, 0, 255),    # 红 BGR - 严重(禁区)
     "edge_work":        (0, 0, 255),    # 红 BGR - 高处临边作业区
+    "no_park":          (0, 0, 255),    # 红 BGR - 电动车禁停区
     "approach_warning": (0, 255, 255),  # 黄 BGR - 警告(警戒区)
     "safe":             (0, 210, 0),    # 绿 BGR - 安全(人行通道, 不告警)
     "general":          (255, 255, 0),  # 青 BGR - 普通(监控区)
@@ -43,6 +44,7 @@ ROI_COLOR_DEFAULT = (0, 255, 255)       # 黄
 ROI_KIND_CN = {
     "no_entry":         "禁区",
     "edge_work":        "临边作业区",
+    "no_park":          "禁停区",
     "approach_warning": "警戒区",
     "safe":             "安全通道",
     "general":          "监控区",
@@ -54,6 +56,7 @@ ALERT_KIND_CN = {
     "smoking":        "违规吸烟",
     "roi_intrusion":  "闯入禁区",
     "edge_violation": "高处临边",
+    "ebike_illegal_park": "电动车违停",
     "panel_open":     "配电柜门未关",
 }
 
@@ -170,6 +173,8 @@ HUD_KEY_CN = {
     "cig": "烟",
     "roi": "闯入",
     "edge": "临边",
+    "ebk": "车",
+    "illegal": "违停",
     "panel": "柜门",
     "fire": "明火",
     "smoke": "烟雾",

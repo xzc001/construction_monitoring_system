@@ -41,6 +41,8 @@ from datetime import datetime
 
 from src.modules.panel import PanelConfig, PanelPipeline
 from src.modules.panel.incident import build_panel_event
+from src.modules.intrusion import IntrusionConfig, IntrusionPipeline
+from src.modules.intrusion.incident import build_intrusion_event
 from src.alerting import AlertDispatcher
 from webapp.media import ensure_h264
 
@@ -64,18 +66,33 @@ MODULES = [
         ],
         "href": "/panel",
     },
+    {
+        "id": "intrusion",
+        "name": "危险区域闯入",
+        "tagline": "多边形电子围栏, 人员闯禁区才告警, 警戒区仅提示",
+        "status": "online",
+        "metrics": [
+            {"label": "判定方式", "value": "电子围栏 + 脚点归属"},
+            {"label": "区域分级", "value": "禁区 / 警戒 / 监控"},
+            {"label": "误报抑制", "value": "持续时长确认"},
+        ],
+        "href": "/intrusion",
+    },
     {"id": "helmet", "name": "未戴安全帽识别", "tagline": "自训练 YOLO 检测安全帽佩戴",
      "status": "planned", "metrics": [], "href": None},
     {"id": "smoking", "name": "违规吸烟检测", "tagline": "明火 / 吸烟行为识别",
      "status": "planned", "metrics": [], "href": None},
-    {"id": "intrusion", "name": "危险区域闯入", "tagline": "多边形电子围栏 + 多色分级",
-     "status": "planned", "metrics": [], "href": None},
 ]
 
 STATE_CN = {
+    # 配电箱模块
     "closed": "门已关 · 合规",
     "open_attended": "维修中 · 人员值守",
     "open_unattended": "无人值守 · 门未关",
+    # 危险区域闯入模块
+    "clear": "安全 · 无人闯入",
+    "warning": "警戒 · 接近危险区",
+    "intrusion": "闯入 · 危险区域有人",
 }
 
 
@@ -141,17 +158,36 @@ def _build_result(run: str) -> dict:
     }
 
 
-def _run_panel(video_path: Path, cfg: PanelConfig, run: str, job_id: str = None):
+# 每个模块如何从样本/上传参数构造自己的流水线对象。
+# 新增模块 = 在此加一个分支(以及 EVENT_BUILDERS / MODULES / 前端页面), 各模块互不影响。
+def build_pipeline_for_sample(s: dict):
+    """根据样本清单里的 module 字段, 构造对应模块的流水线对象。"""
+    module = s.get("module", "panel")
+    if module == "panel":
+        cfg = PanelConfig.from_roi_string(
+            s["panel_roi"], threshold=s.get("threshold", 95.0),
+            attended_grace=s.get("grace", 2.0), persist_alert=s.get("persist", 1.5))
+        return PanelPipeline(cfg)
+    if module == "intrusion":
+        cfg = IntrusionConfig.from_zone_specs(
+            s["zones"], persist_alert=s.get("persist", 1.5))
+        return IntrusionPipeline(cfg)
+    raise ValueError(f"未知模块: {module}")
+
+
+def _run_pipeline(pipeline, video_path: Path, run: str, job_id: str = None):
+    """通用: 跑任意模块的 process_video, 可选回传进度到 JOBS。"""
     def cb(i, total):
         if job_id:
             with _lock:
                 JOBS[job_id]["progress"] = round(i / max(total, 1), 3)
-    PanelPipeline(cfg).process_video(video_path, RUNS / run, progress_cb=cb)
+    pipeline.process_video(video_path, RUNS / run, progress_cb=cb)
 
 
-def _run_panel_job(job_id: str, video_path: Path, cfg: PanelConfig, run: str):
+def _run_job(job_id: str, pipeline, video_path: Path, run: str):
+    """后台线程: 跑任意模块流水线, 完成/失败写回 JOBS。"""
     try:
-        _run_panel(video_path, cfg, run, job_id)
+        _run_pipeline(pipeline, video_path, run, job_id)
         with _lock:
             JOBS[job_id].update(status="done", progress=1.0, run=run)
     except Exception as e:  # noqa: BLE001
@@ -169,12 +205,10 @@ def ensure_samples_ready():
         if not video.exists():
             print(f"[样本] 缺少源视频, 跳过: {video}")
             continue
-        print(f"[样本] 首次生成预渲染结果: {s['id']} (约 20-40 秒, 仅首次)...")
-        cfg = PanelConfig.from_roi_string(
-            s["panel_roi"], threshold=s.get("threshold", 95.0),
-            attended_grace=s.get("grace", 2.0), persist_alert=s.get("persist", 1.5))
+        print(f"[样本] 首次生成预渲染结果: {s['id']} ({s.get('module','panel')}, "
+              f"约 20-60 秒, 仅首次)...")
         try:
-            _run_panel(video, cfg, run)
+            _run_pipeline(build_pipeline_for_sample(s), video, run)
             print(f"[样本] {s['id']} 就绪。")
         except Exception as e:  # noqa: BLE001
             print(f"[样本] 生成失败 {s['id']}: {e}")
@@ -196,10 +230,14 @@ def get_modules():
 
 
 @app.get("/api/samples")
-def get_samples():
+def get_samples(module: str | None = None):
+    """内置样本清单。带 ?module=panel / intrusion 时只返回该模块的样本。"""
     out = []
     for s in load_samples():
+        if module and s.get("module", "panel") != module:
+            continue
         item = {k: s[k] for k in ("id", "title", "subtitle") if k in s}
+        item["module"] = s.get("module", "panel")
         item["run"] = s["id"]
         item["ready"] = (RUNS / s["id"] / "events.json").exists()
         out.append(item)
@@ -233,8 +271,37 @@ async def analyze(
     run = f"web_{job_id}"
     with _lock:
         JOBS[job_id] = {"status": "running", "progress": 0.0, "run": run}
-    threading.Thread(target=_run_panel_job,
-                     args=(job_id, Path(tmp.name), cfg, run), daemon=True).start()
+    threading.Thread(target=_run_job,
+                     args=(job_id, PanelPipeline(cfg), Path(tmp.name), run),
+                     daemon=True).start()
+    return {"job_id": job_id, "run": run}
+
+
+@app.post("/api/intrusion/analyze")
+async def intrusion_analyze(
+    zone_roi: str = Form(...),
+    kind: str = Form("no_entry"),
+    name: str = Form("危险区域"),
+    persist: float = Form(1.5),
+    file: UploadFile = File(...),
+):
+    suffix = Path(file.filename or "upload.mp4").suffix or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    try:
+        cfg = IntrusionConfig.from_roi_string(
+            zone_roi, kind=kind, name=name, persist_alert=persist)
+    except Exception:
+        raise HTTPException(400, "zone_roi 格式应为 x1,y1,x2,y2(多个用 ; 分隔)")
+
+    job_id = uuid.uuid4().hex[:12]
+    run = f"web_{job_id}"
+    with _lock:
+        JOBS[job_id] = {"status": "running", "progress": 0.0, "run": run}
+    threading.Thread(target=_run_job,
+                     args=(job_id, IntrusionPipeline(cfg), Path(tmp.name), run),
+                     daemon=True).start()
     return {"job_id": job_id, "run": run}
 
 
@@ -255,26 +322,45 @@ def alerting_status():
     return AlertDispatcher().status()
 
 
+# 各模块如何把一次告警整理成通用 AlertEvent(报告/邮件复用)。
+# 新增模块时在此登记其 build_*_event 即可, 报告/邮件接口无需改动。
+EVENT_BUILDERS = {
+    "panel": build_panel_event,
+    "intrusion": build_intrusion_event,
+}
+
+
 def _gen_report(run: str, alert_idx: int, location: str):
     run_dir = RUNS / run
-    if not (run_dir / "events.json").exists():
+    events_path = run_dir / "events.json"
+    if not events_path.exists():
         raise HTTPException(404, f"结果不存在: {run}")
+    module = json.loads(events_path.read_text(encoding="utf-8")).get("module", "panel")
+    builder = EVENT_BUILDERS.get(module, build_panel_event)
     try:
-        event = build_panel_event(run_dir, alert_idx, location=location or "演示点位")
+        event = builder(run_dir, alert_idx, location=location or "演示点位")
     except ValueError as e:
         raise HTTPException(400, str(e))
     pdf = run_dir / "incident_report.pdf"
     now = datetime.now()
-    report_no = f"PANEL-{now:%Y%m%d}-{run[-4:]}"
+    report_no = f"{module.upper()}-{now:%Y%m%d}-{run[-4:]}"
     AlertDispatcher().generate_report(
         event, pdf, report_no=report_no, generated_at=now.strftime("%Y-%m-%d %H:%M"))
     return event, pdf
 
 
+@app.post("/api/report")
+def gen_report(run: str = Form(...), alert_idx: int = Form(0),
+               location: str = Form("")):
+    """生成事故报告 PDF(按 run 所属模块自动选叙事模板), 返回下载地址。"""
+    _, pdf = _gen_report(run, alert_idx, location)
+    return {"report_url": f"/media/{run}/{pdf.name}"}
+
+
 @app.post("/api/panel/report")
 def panel_report(run: str = Form(...), alert_idx: int = Form(0),
                  location: str = Form("")):
-    """生成事故报告 PDF, 返回可下载地址。"""
+    """生成事故报告 PDF, 返回可下载地址(配电箱页历史接口, 等价于 /api/report)。"""
     _, pdf = _gen_report(run, alert_idx, location)
     return {"report_url": f"/media/{run}/{pdf.name}"}
 
@@ -298,6 +384,11 @@ def index():
 @app.get("/panel")
 def panel_page():
     return FileResponse(STATIC / "panel.html")
+
+
+@app.get("/intrusion")
+def intrusion_page():
+    return FileResponse(STATIC / "intrusion.html")
 
 
 app.mount("/media", StaticFiles(directory=str(RUNS)), name="media")

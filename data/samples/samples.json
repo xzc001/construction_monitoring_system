@@ -1,12 +1,28 @@
 [
   {
     "id": "panel_storyline",
+    "module": "panel",
     "title": "配电箱三态完整演示",
     "subtitle": "门关 → 有人维修 → 人离开门未关(告警)",
     "video": "panel_storyline.mp4",
     "panel_roi": "195,611,477,790",
     "threshold": 95.0,
     "grace": 2.0,
+    "persist": 1.5
+  },
+  {
+    "id": "intrusion_storyline",
+    "module": "intrusion",
+    "title": "危险区域闯入演示",
+    "subtitle": "无人 → 人员闯入禁区(告警) → 离开",
+    "video": "panel_storyline.mp4",
+    "zones": [
+      {
+        "name": "配电作业危险区",
+        "kind": "no_entry",
+        "polygon": [[150, 640], [820, 640], [820, 1080], [150, 1080]]
+      }
+    ],
     "persist": 1.5
   }
 ]

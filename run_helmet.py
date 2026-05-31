@@ -1,7 +1,7 @@
 """未戴安全帽模块命令行入口(不经网站, 直接出标注视频)。
 
 示例:
-    python run_helmet.py --video data/samples/helmet_workshop.mp4 --out helmet_demo
+    python run_helmet.py --video data/samples/helmet_factory.mp4 --out helmet_demo
 """
 
 import argparse

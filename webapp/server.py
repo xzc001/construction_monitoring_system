@@ -51,6 +51,8 @@ from src.modules.fire import FireConfig, FirePipeline
 from src.modules.fire.incident import build_fire_event
 from src.modules.vest import VestConfig, VestPipeline
 from src.modules.vest.incident import build_vest_event
+from src.modules.height import HeightConfig, HeightPipeline
+from src.modules.height.incident import build_height_event
 from src.alerting import AlertDispatcher
 from webapp.media import ensure_h264
 
@@ -134,6 +136,18 @@ MODULES = [
         ],
         "href": "/vest",
     },
+    {
+        "id": "height",
+        "name": "高处作业临边监测",
+        "tagline": "划定高处作业平台/临边区, 人员脚点落入并持续即告警",
+        "status": "online",
+        "metrics": [
+            {"label": "判定方式", "value": "人体检测 + 临边 ROI"},
+            {"label": "区分高/低", "value": "脚点归属平台"},
+            {"label": "误报抑制", "value": "持续时长 + 时间迟滞"},
+        ],
+        "href": "/height",
+    },
 ]
 
 STATE_CN = {
@@ -157,6 +171,9 @@ STATE_CN = {
     # 未穿反光衣模块
     "vest_ok": "合规 · 已穿反光衣",
     "no_vest": "违规 · 未穿反光衣",
+    # 高处作业临边模块
+    "no_edge": "安全 · 无人临边作业",
+    "edge_work": "高处临边作业 · 风险",
 }
 
 
@@ -263,6 +280,11 @@ def build_pipeline_for_sample(s: dict):
                          state_grace=s.get("grace", 1.0),
                          require_person=s.get("require_person", True))
         return VestPipeline(cfg)
+    if module == "height":
+        cfg = HeightConfig.from_zone_specs(
+            s["zones"], persist_alert=s.get("persist", 1.5),
+            state_grace=s.get("grace", 1.0))
+        return HeightPipeline(cfg)
     raise ValueError(f"未知模块: {module}")
 
 
@@ -477,6 +499,35 @@ async def vest_analyze(vest_conf: float = Form(0.40), persist: float = Form(1.0)
     return {"job_id": job_id, "run": run}
 
 
+@app.post("/api/height/analyze")
+async def height_analyze(
+    zone_roi: str = Form(...),
+    name: str = Form("高处临边作业区"),
+    persist: float = Form(1.5),
+    grace: float = Form(1.0),
+    file: UploadFile = File(...),
+):
+    suffix = Path(file.filename or "upload.mp4").suffix or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    try:
+        cfg = HeightConfig.from_roi_string(
+            zone_roi, kind="edge_work", name=name,
+            persist_alert=persist, state_grace=grace)
+    except Exception:
+        raise HTTPException(400, "zone_roi 格式应为 x1,y1,x2,y2(多个用 ; 分隔)")
+
+    job_id = uuid.uuid4().hex[:12]
+    run = f"web_{job_id}"
+    with _lock:
+        JOBS[job_id] = {"status": "running", "progress": 0.0, "run": run}
+    threading.Thread(target=_run_job,
+                     args=(job_id, HeightPipeline(cfg), Path(tmp.name), run),
+                     daemon=True).start()
+    return {"job_id": job_id, "run": run}
+
+
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str):
     with _lock:
@@ -503,6 +554,7 @@ EVENT_BUILDERS = {
     "smoking": build_smoking_event,
     "fire": build_fire_event,
     "vest": build_vest_event,
+    "height": build_height_event,
 }
 
 
@@ -585,6 +637,11 @@ def fire_page():
 @app.get("/vest")
 def vest_page():
     return FileResponse(STATIC / "vest.html")
+
+
+@app.get("/height")
+def height_page():
+    return FileResponse(STATIC / "height.html")
 
 
 app.mount("/media", StaticFiles(directory=str(RUNS)), name="media")

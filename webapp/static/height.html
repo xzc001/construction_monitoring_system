@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>高处作业临边监测 · AI 监控演示</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/height.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="logo">◈</span> 施工现场 AI 智能监控系统</a>
+    <div class="sep"></div>
+    <a class="nav-link" href="/">← 返回总览</a>
+    <div class="stat mono" id="clock">--:--:--</div>
+  </header>
+
+  <main class="wrap">
+    <section class="page-head">
+      <div class="crumb reveal"><a href="/">能力矩阵</a> / 高处作业临边监测</div>
+      <h1 class="reveal" style="animation-delay:.06s">高处作业临边监测</h1>
+      <p class="sub reveal" style="animation-delay:.12s">
+        在画面上划定<strong style="color:var(--red)">高处作业平台 / 临边区域</strong>。系统以
+        人体<strong>脚点归属</strong>区分高处与地面人员:人员脚点落入临边区并
+        <strong>持续作业</strong>才告警,提示佩戴安全带、确认临边防护到位,避免"路过即报"。
+      </p>
+      <div class="rulebar reveal" style="animation-delay:.18s">
+        <div class="rule g"><span class="sw"></span>临边区内无人 → 安全</div>
+        <div class="rule r"><span class="sw"></span>人员脚点落入临边区且持续 → 高处临边告警</div>
+      </div>
+    </section>
+
+    <div class="samples reveal" id="samples" style="animation-delay:.22s"></div>
+
+    <section class="studio">
+      <!-- 左: 视频 + 状态 + 时间轴 -->
+      <div>
+        <div class="video-shell">
+          <div class="rec"><span class="d"></span>REC · AI ANALYZING</div>
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+          <video id="video" controls preload="metadata"></video>
+        </div>
+
+        <div class="statusbar s-no_edge" id="statusbar">
+          <span class="ball"></span>
+          <div class="txt">
+            <div class="st" id="st-text">等待加载</div>
+            <div class="desc" id="st-desc">选择上方样本开始演示</div>
+          </div>
+          <button class="voice-toggle on" id="voice-toggle" title="播放到告警时刻自动语音提示">
+            🔊 语音告警 开
+          </button>
+          <div class="time mono" id="st-time">--:-- / --:--</div>
+        </div>
+
+        <div class="timeline-wrap">
+          <div class="axislbl"><span>00:00</span><span id="tl-end">--:--</span></div>
+          <div class="timeline" id="timeline">
+            <div class="playhead" id="playhead" style="left:0"></div>
+          </div>
+        </div>
+
+        <!-- 上传分析 -->
+        <div class="uploader panel-box" style="margin-top:26px">
+          <div class="hd">上传你自己的监控片段</div>
+          <div class="drop" id="drop">
+            <div class="big">⤴ 点击或拖入视频文件</div>
+            <div class="small" id="drop-name">mp4 / avi / mov · 固定机位最佳</div>
+          </div>
+          <div class="up-fields">
+            <div class="field">
+              <label>临边作业区矩形 (x1,y1,x2,y2)</label>
+              <input id="roi" value="270,345,1190,485" />
+            </div>
+            <div class="field">
+              <label>临边告警(秒)</label>
+              <input id="persist" value="1.5" style="width:120px" />
+            </div>
+            <button class="btn" id="run-btn" disabled>开始分析</button>
+          </div>
+          <div class="up-hint">提示: 在固定机位画面上框出高处作业平台/临边区域(像素坐标);
+            多个区域用 <code>;</code> 分隔。人员脚底落入即判定为在该区域内作业。</div>
+          <div class="progress" id="prog" style="display:none"><div class="bar" id="prog-bar"></div></div>
+          <div class="up-status" id="up-status"></div>
+        </div>
+      </div>
+
+      <!-- 右: 指标 + 告警 -->
+      <div>
+        <div class="panel-box" style="margin-bottom:18px">
+          <div class="hd">实时指标</div>
+          <div class="metrics-grid">
+            <div class="metric"><div class="v" id="m-dur">--</div><div class="k">时长 / 秒</div></div>
+            <div class="metric"><div class="v alert" id="m-alert">--</div><div class="k">告警事件</div></div>
+            <div class="metric"><div class="v" id="m-res">--</div><div class="k">分辨率</div></div>
+            <div class="metric"><div class="v" id="m-elapsed">--</div><div class="k">分析耗时</div></div>
+          </div>
+        </div>
+        <div class="panel-box" style="margin-bottom:18px">
+          <div class="hd">告警事件 <span class="dim" id="alert-count" style="margin-left:auto;font-family:var(--font-mono)"></span></div>
+          <div class="alert-list" id="alert-list"></div>
+        </div>
+
+        <div class="panel-box">
+          <div class="hd">告警动作</div>
+          <div class="aa-row">
+            <button class="btn ghost" id="btn-report" disabled>📄 生成事故报告</button>
+            <button class="btn" id="btn-email" disabled>✉ 发送到邮箱</button>
+          </div>
+          <div class="aa-status" id="aa-status"></div>
+          <div class="aa-hint" id="aa-hint"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>高处作业临边监测 · 业务规则驱动告警</span>
+      <span class="sep"></span>
+      <span id="foot-time"></span>
+    </footer>
+  </main>
+
+  <div class="lightbox" id="lightbox"><img id="lightbox-img" src="" alt="" /></div>
+
+  <script src="/static/js/common.js"></script>
+  <script src="/static/js/height.js"></script>
+</body>
+</html>

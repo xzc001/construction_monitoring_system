@@ -87,5 +87,21 @@
     "smoking_conf": 0.55,
     "grace": 1.5,
     "persist": 0.8
+  },
+  {
+    "id": "height_edge",
+    "module": "height",
+    "title": "高处作业临边演示",
+    "subtitle": "外架高空作业 → 人员脚点落入临边作业区并持续即告警(地面人员脚点在区外不触发)",
+    "video": "height_edge.mp4",
+    "zones": [
+      {
+        "name": "外架临边作业区",
+        "kind": "edge_work",
+        "polygon": [[270, 345], [1180, 360], [1190, 485], [290, 470]]
+      }
+    ],
+    "persist": 1.2,
+    "grace": 1.0
   }
 ]

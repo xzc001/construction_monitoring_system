@@ -32,6 +32,7 @@ COLOR_ALERT_BANNER = (0, 0, 255)        # 红
 # ROI 多色分级 (按 kind)
 ROI_COLORS = {
     "no_entry":         (0, 0, 255),    # 红 BGR - 严重(禁区)
+    "edge_work":        (0, 0, 255),    # 红 BGR - 高处临边作业区
     "approach_warning": (0, 255, 255),  # 黄 BGR - 警告(警戒区)
     "safe":             (0, 210, 0),    # 绿 BGR - 安全(人行通道, 不告警)
     "general":          (255, 255, 0),  # 青 BGR - 普通(监控区)
@@ -41,6 +42,7 @@ ROI_COLOR_DEFAULT = (0, 255, 255)       # 黄
 # ROI 类型中文名
 ROI_KIND_CN = {
     "no_entry":         "禁区",
+    "edge_work":        "临边作业区",
     "approach_warning": "警戒区",
     "safe":             "安全通道",
     "general":          "监控区",
@@ -48,10 +50,11 @@ ROI_KIND_CN = {
 
 # 告警类型中文名
 ALERT_KIND_CN = {
-    "no_helmet":     "未戴安全帽",
-    "smoking":       "违规吸烟",
-    "roi_intrusion": "闯入禁区",
-    "panel_open":    "配电柜门未关",
+    "no_helmet":      "未戴安全帽",
+    "smoking":        "违规吸烟",
+    "roi_intrusion":  "闯入禁区",
+    "edge_violation": "高处临边",
+    "panel_open":     "配电柜门未关",
 }
 
 
@@ -166,6 +169,7 @@ HUD_KEY_CN = {
     "no_h": "未戴",
     "cig": "烟",
     "roi": "闯入",
+    "edge": "临边",
     "panel": "柜门",
     "fire": "明火",
     "smoke": "烟雾",

@@ -170,7 +170,8 @@ def build_pipeline_for_sample(s: dict):
         return PanelPipeline(cfg)
     if module == "intrusion":
         cfg = IntrusionConfig.from_zone_specs(
-            s["zones"], persist_alert=s.get("persist", 1.5))
+            s["zones"], persist_alert=s.get("persist", 1.5),
+            state_grace=s.get("grace", 1.0))
         return IntrusionPipeline(cfg)
     raise ValueError(f"未知模块: {module}")
 
@@ -283,6 +284,7 @@ async def intrusion_analyze(
     kind: str = Form("no_entry"),
     name: str = Form("危险区域"),
     persist: float = Form(1.5),
+    grace: float = Form(1.0),
     file: UploadFile = File(...),
 ):
     suffix = Path(file.filename or "upload.mp4").suffix or ".mp4"
@@ -291,7 +293,7 @@ async def intrusion_analyze(
     tmp.close()
     try:
         cfg = IntrusionConfig.from_roi_string(
-            zone_roi, kind=kind, name=name, persist_alert=persist)
+            zone_roi, kind=kind, name=name, persist_alert=persist, state_grace=grace)
     except Exception:
         raise HTTPException(400, "zone_roi 格式应为 x1,y1,x2,y2(多个用 ; 分隔)")
 

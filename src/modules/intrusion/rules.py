@@ -59,3 +59,28 @@ def evaluate_frame(persons: list[Detection], zones: list[RoiZone],
         if STATE_PRIORITY[cand] > STATE_PRIORITY[state]:
             state = cand
     return hits, state
+
+
+class IntrusionStateSmoother:
+    """逐帧状态的时间迟滞平滑(消除时间轴/状态条断续闪烁)。
+
+    进入 intrusion / warning 后, 在宽限期(grace_frames)内即便后续帧
+    瞬时掉回 clear(人体漏检 / 脚点在禁区边缘抖动), 仍保持该状态;
+    并优先保持更严重的状态(intrusion > warning)。
+
+    与配电箱 PanelStateSmoother 同思路, 各模块各自持有, 互不耦合。
+    """
+
+    _ORDER = ("intrusion", "warning")     # 从高到低: 优先保持更严重的状态
+
+    def __init__(self, grace_frames: int = 25):
+        self.grace_frames = max(1, int(grace_frames))
+        self._last_seen = {"warning": -10 ** 9, "intrusion": -10 ** 9}
+
+    def smooth(self, raw_state: str, frame_idx: int) -> str:
+        if raw_state in self._last_seen:
+            self._last_seen[raw_state] = frame_idx
+        for st in self._ORDER:
+            if frame_idx - self._last_seen[st] <= self.grace_frames:
+                return st
+        return "clear"

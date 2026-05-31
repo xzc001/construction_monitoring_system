@@ -22,7 +22,7 @@ from ...rules.tracker import ViolationTracker
 from ...types import Alert, Violation
 from ...visualizer import draw_alert_banner, draw_box, draw_hud, draw_roi
 from .config import IntrusionConfig
-from .rules import evaluate_frame
+from .rules import IntrusionStateSmoother, evaluate_frame
 
 # 配色 (BGR)
 C_PERSON_SAFE = (255, 128, 0)     # 蓝 - 区域外的人(安全)
@@ -64,6 +64,8 @@ class IntrusionPipeline:
             persist_frames=max(1, int(self.cfg.persist_alert * fps)),
             match_dist=max(W, H) // 4,
         )
+        smoother = IntrusionStateSmoother(
+            grace_frames=max(1, int(self.cfg.state_grace * fps)))
 
         writer = cv2.VideoWriter(str(video_out_path),
                                  cv2.VideoWriter_fourcc(*"mp4v"), fps, (W, H))
@@ -80,7 +82,9 @@ class IntrusionPipeline:
             frame_idx += 1
 
             persons = self.person_detector.detect(frame)
-            hits, state = evaluate_frame(persons, self.cfg.zones, anchor=self.cfg.anchor)
+            hits, raw_state = evaluate_frame(persons, self.cfg.zones, anchor=self.cfg.anchor)
+            # 时间迟滞平滑: 吸收瞬时漏检, 让时间轴/状态条连续不闪烁
+            state = smoother.smooth(raw_state, frame_idx)
             # 只有落在"禁区(no_entry)"里的人才标红/告警; 安全通道里的人保持蓝色
             hit_persons = {id(p) for p, z in hits if z.kind == "no_entry"}
 

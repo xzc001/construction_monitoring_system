@@ -27,6 +27,8 @@ class IntrusionConfig:
                                      #   foot   = 脚底中点(站在地面区域时最准, 默认)
                                      #   center = 框中心
     persist_alert: float = 1.5       # 人员在禁区内持续多少秒才正式告警(消除路过误报)
+    state_grace: float = 1.0         # 状态时间迟滞宽限期(秒): 进入闯入/警戒后保持多久,
+                                     # 吸收人体瞬时漏检与脚点边缘抖动, 消除时间轴断续闪烁
 
     # --- 推理参数 ---
     person_conf: float = 0.35        # 人体检测置信度

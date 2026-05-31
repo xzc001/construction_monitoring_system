@@ -54,8 +54,8 @@
     "id": "helmet_workshop",
     "module": "helmet",
     "title": "未戴安全帽演示",
-    "subtitle": "工厂车间监控 → 多名作业人员未佩戴安全帽,头部红框告警(绿框=已佩戴)",
-    "video": "helmet_factory.mp4",
+    "subtitle": "工厂出入口监控 → 作业人员未佩戴安全帽,头部红框告警(绿框=已佩戴)",
+    "video": "helmet_cmot.mp4",
     "helmet_conf": 0.40,
     "persist": 1.0
   },

@@ -113,12 +113,12 @@ MODULES = [
     {
         "id": "fire",
         "name": "烟雾明火识别",
-        "tagline": "YOLO 检测火焰/烟雾; 模型已就绪, 待现场素材补内置演示",
-        "status": "ready",
+        "tagline": "YOLO 检测火焰/烟雾, 持续即预警",
+        "status": "online",
         "metrics": [
             {"label": "判定方式", "value": "烟火 YOLO"},
             {"label": "类别", "value": "明火 / 烟雾"},
-            {"label": "状态", "value": "可上传试用"},
+            {"label": "误报抑制", "value": "持续时长 + 时间迟滞"},
         ],
         "href": "/fire",
     },

@@ -67,5 +67,14 @@
     "video": "smoking_demo.mp4",
     "smoking_conf": 0.50,
     "persist": 1.0
+  },
+  {
+    "id": "fire_demo",
+    "module": "fire",
+    "title": "烟雾明火演示",
+    "subtitle": "建筑/作业区起火 → 明火+烟雾区域红框告警",
+    "video": "fire_demo.mp4",
+    "fire_conf": 0.40,
+    "persist": 1.0
   }
 ]

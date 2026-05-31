@@ -283,7 +283,8 @@ def build_pipeline_for_sample(s: dict):
     if module == "height":
         cfg = HeightConfig.from_zone_specs(
             s["zones"], persist_alert=s.get("persist", 1.5),
-            state_grace=s.get("grace", 1.0))
+            state_grace=s.get("grace", 1.0),
+            context_person_conf=s.get("context_conf", 0.6))
         return HeightPipeline(cfg)
     raise ValueError(f"未知模块: {module}")
 

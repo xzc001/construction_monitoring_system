@@ -86,8 +86,12 @@ class HeightPipeline:
             hits, raw_state = evaluate_frame(persons, self.cfg.zones, anchor=self.cfg.anchor)
             state = smoother.smooth(raw_state, frame_idx)
             hit_persons = {id(p) for p, z in hits}
+            # 区外人员置信度门槛: 滤掉挂着的料袋/杂物等低分误检(不影响区内告警判定)
+            ctx_conf = self.cfg.context_person_conf
+            shown_persons = [p for p in persons
+                             if id(p) in hit_persons or p.conf >= ctx_conf]
 
-            cumulative["person"] += len(persons)
+            cumulative["person"] += len(shown_persons)
             cumulative["edge_work"] += len(hits)
             timeline.append(state)
 
@@ -114,7 +118,7 @@ class HeightPipeline:
             # ---- 可视化 ----
             for z in self.cfg.zones:
                 draw_roi(frame, z)
-            for p in persons:
+            for p in shown_persons:
                 color = C_PERSON_HIT if id(p) in hit_persons else C_PERSON_SAFE
                 label = "临边作业" if id(p) in hit_persons else "人员"
                 draw_box(frame, p, color, label=label,

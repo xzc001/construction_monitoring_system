@@ -30,7 +30,10 @@ class HeightConfig:
     state_grace: float = 1.0         # 状态时间迟滞宽限期(秒): 吸收人体瞬时漏检与脚点抖动
 
     # --- 推理参数 ---
-    person_conf: float = 0.35        # 人体检测置信度
+    person_conf: float = 0.35        # 临边区内人体检测置信度(偏低, 保住真作业人员)
+    context_person_conf: float = 0.6 # 临边区外人员需达到该置信度才显示为"人员"。
+                                     # 区外目标(挂着的料袋/杂物)常被低分误判成人, 抬高门槛滤掉;
+                                     # 区内不受影响(只影响画面观感, 不参与告警判定)。
     imgsz: int = 1280                # 推理分辨率(1280 利于远景小目标)
     device: object = None            # None = 自动选 GPU/CPU
 

@@ -13,10 +13,15 @@
   {
     "id": "intrusion_equipment",
     "module": "intrusion",
-    "title": "未授权闯入设备作业区",
-    "subtitle": "无人 → 人员闯入中央设备区(告警) → 离开",
+    "title": "脱离安全通道·闯入设备区",
+    "subtitle": "绿色=人行安全通道, 红色=设备作业禁区; 人员进红区→告警",
     "video": "intrusion_equipment.mp4",
     "zones": [
+      {
+        "name": "人行安全通道",
+        "kind": "safe",
+        "polygon": [[1640, 560], [1820, 565], [1885, 985], [1520, 950]]
+      },
       {
         "name": "中央设备作业区",
         "kind": "no_entry",
@@ -26,16 +31,21 @@
     "persist": 1.2
   },
   {
-    "id": "intrusion_walkway",
+    "id": "intrusion_forklift",
     "module": "intrusion",
-    "title": "走道违规·闯入料架区",
-    "subtitle": "人员走入料架危险区, 持续停留触发告警",
-    "video": "intrusion_walkway.mp4",
+    "title": "叉车作业通道·人车混行",
+    "subtitle": "红色=叉车作业通道(画面中可见叉车), 人员步行进入→告警",
+    "video": "intrusion_forklift.mp4",
     "zones": [
       {
-        "name": "料架危险区",
+        "name": "人行安全通道",
+        "kind": "safe",
+        "polygon": [[1660, 600], [1880, 640], [1900, 980], [1560, 950]]
+      },
+      {
+        "name": "叉车作业通道",
         "kind": "no_entry",
-        "polygon": [[1320, 540], [1760, 540], [1760, 850], [1320, 850]]
+        "polygon": [[900, 560], [1620, 580], [1760, 1080], [640, 1080]]
       }
     ],
     "persist": 1.2

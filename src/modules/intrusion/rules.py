@@ -40,14 +40,22 @@ def evaluate_frame(persons: list[Detection], zones: list[RoiZone],
     """
     hits: list[tuple[Detection, RoiZone]] = []
     state = "clear"
+    severity_rank = {"no_entry": 2, "approach_warning": 1}
     for p in persons:
         pt = anchor_point(p, anchor)
+        # 一个人可能同时落在多个区域(如安全通道与禁区重叠), 取严重度最高的那个
+        best: tuple[int, RoiZone] | None = None
         for z in zones:
             if z.contains(pt):
-                hits.append((p, z))
-                cand = "intrusion" if z.kind == "no_entry" else (
-                    "warning" if z.kind == "approach_warning" else "clear")
-                if STATE_PRIORITY[cand] > STATE_PRIORITY[state]:
-                    state = cand
-                break      # 这个人已归区, 不再看其它区域
+                rank = severity_rank.get(z.kind, 0)
+                if best is None or rank > best[0]:
+                    best = (rank, z)
+        if best is None:
+            continue
+        z = best[1]
+        hits.append((p, z))
+        cand = "intrusion" if z.kind == "no_entry" else (
+            "warning" if z.kind == "approach_warning" else "clear")
+        if STATE_PRIORITY[cand] > STATE_PRIORITY[state]:
+            state = cand
     return hits, state

@@ -31,9 +31,10 @@ COLOR_ALERT_BANNER = (0, 0, 255)        # 红
 
 # ROI 多色分级 (按 kind)
 ROI_COLORS = {
-    "no_entry":         (0, 0, 255),    # 红 BGR - 严重
-    "approach_warning": (0, 255, 255),  # 黄 BGR - 警告
-    "general":          (255, 255, 0),  # 青 BGR - 普通
+    "no_entry":         (0, 0, 255),    # 红 BGR - 严重(禁区)
+    "approach_warning": (0, 255, 255),  # 黄 BGR - 警告(警戒区)
+    "safe":             (0, 210, 0),    # 绿 BGR - 安全(人行通道, 不告警)
+    "general":          (255, 255, 0),  # 青 BGR - 普通(监控区)
 }
 ROI_COLOR_DEFAULT = (0, 255, 255)       # 黄
 
@@ -41,6 +42,7 @@ ROI_COLOR_DEFAULT = (0, 255, 255)       # 黄
 ROI_KIND_CN = {
     "no_entry":         "禁区",
     "approach_warning": "警戒区",
+    "safe":             "安全通道",
     "general":          "监控区",
 }
 

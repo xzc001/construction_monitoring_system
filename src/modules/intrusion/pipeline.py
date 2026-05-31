@@ -81,7 +81,8 @@ class IntrusionPipeline:
 
             persons = self.person_detector.detect(frame)
             hits, state = evaluate_frame(persons, self.cfg.zones, anchor=self.cfg.anchor)
-            hit_persons = {id(p) for p, _ in hits}
+            # 只有落在"禁区(no_entry)"里的人才标红/告警; 安全通道里的人保持蓝色
+            hit_persons = {id(p) for p, z in hits if z.kind == "no_entry"}
 
             # 只有"闯入禁区(no_entry)"才进 tracker → 告警
             violations = [

@@ -101,12 +101,12 @@ MODULES = [
     {
         "id": "smoking",
         "name": "违规吸烟检测",
-        "tagline": "香烟 YOLO + 人脸/上半身校验; 模型已就绪, 待中景素材",
-        "status": "ready",
+        "tagline": "香烟 YOLO + 人脸/上半身校验, 滤掉塔吊管道误报",
+        "status": "online",
         "metrics": [
             {"label": "判定方式", "value": "香烟 YOLO + 上半身校验"},
             {"label": "类别", "value": "cigarette"},
-            {"label": "状态", "value": "可上传试用"},
+            {"label": "误报抑制", "value": "框小 + 靠人 + 持续"},
         ],
         "href": "/smoking",
     },

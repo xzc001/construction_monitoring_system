@@ -60,15 +60,6 @@
     "persist": 1.0
   },
   {
-    "id": "fire_demo",
-    "module": "fire",
-    "title": "烟雾明火演示",
-    "subtitle": "建筑/作业区起火 → 明火+烟雾区域红框告警",
-    "video": "fire_demo.mp4",
-    "fire_conf": 0.40,
-    "persist": 1.0
-  },
-  {
     "id": "ebike_fire_demo",
     "module": "fire",
     "title": "电动车停放点烟火预警",
@@ -85,6 +76,16 @@
     "subtitle": "工地俯视 → 未穿反光衣人员红框告警(绿框=已穿)",
     "video": "vest_demo.mp4",
     "vest_conf": 0.40,
+    "persist": 1.0
+  },
+  {
+    "id": "smoking_cctv",
+    "module": "smoking",
+    "title": "违规吸烟演示(监控)",
+    "subtitle": "禁烟区固定机位 → 人员吸烟检测告警(真实CCTV, 含禁烟标志)",
+    "video": "smoking_cctv_demo.mp4",
+    "smoking_conf": 0.50,
+    "grace": 1.5,
     "persist": 1.0
   }
 ]

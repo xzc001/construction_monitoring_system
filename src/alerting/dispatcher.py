@@ -26,11 +26,16 @@ class AlertDispatcher:
                         report_no: str = "", generated_at: str = "") -> Path:
         return build_report(event, out_pdf, report_no, generated_at)
 
-    def dispatch(self, event: AlertEvent, pdf: Optional[Path] = None) -> dict:
-        """执行所有已启用的告警动作, 返回每个渠道的结果。"""
+    def dispatch(self, event: AlertEvent, pdf: Optional[Path] = None,
+                 recipients: Optional[list] = None) -> dict:
+        """执行所有已启用的告警动作, 返回每个渠道的结果。
+
+        recipients: 调用方指定的收件人(前端填写的邮箱); None 时用配置默认收件人。
+        """
         results = {}
-        if self.email.available():
-            results["email"] = self.email.send(event, pdf=pdf)
+        # 有 SMTP 账号即可发(收件人可由前端临时指定); 渠道内部再次校验
+        if self.email.cfg.enabled and self.email.cfg.smtp_user and self.email.cfg.smtp_password:
+            results["email"] = self.email.send(event, pdf=pdf, recipients=recipients)
         else:
             results["email"] = {"ok": False, "detail": "未启用"}
         return results

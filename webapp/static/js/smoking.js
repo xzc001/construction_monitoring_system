@@ -211,86 +211,8 @@ const lightboxImg = document.getElementById("lightbox-img");
 function openLightbox(src) { lightboxImg.src = src; lightbox.classList.add("show"); }
 lightbox.onclick = () => lightbox.classList.remove("show");
 
-// ---------- 告警动作: 报告 / 邮件 ----------
-const btnReport = document.getElementById("btn-report");
-const btnEmail = document.getElementById("btn-email");
-const aaStatus = document.getElementById("aa-status");
-const aaHint = document.getElementById("aa-hint");
-let emailReady = false;
+// 告警动作(报告/邮件/自动发送)逻辑见 common.js
 
-(async function initAlerting() {
-  try {
-    const s = await api("/api/alerting/status");
-    emailReady = !!s.email;
-  } catch (e) { emailReady = false; }
-  if (!emailReady) {
-    aaHint.innerHTML =
-      '邮箱未配置 —— 复制 <code>config/alerting.example.yaml</code> 为 ' +
-      '<code>config/alerting.yaml</code> 并填入 QQ 邮箱授权码后即可发送(详见 README)。';
-  }
-  if (RESULT) updateAlertActions(RESULT);
-})();
-
-function updateAlertActions(r) {
-  const has = r && r.n_alerts > 0;
-  btnReport.disabled = !has;
-  btnEmail.disabled = !has || !emailReady;
-  aaStatus.textContent = "";
-  aaStatus.className = "aa-status";
-  if (has && !emailReady) {
-    btnEmail.title = "邮箱未配置";
-  }
-}
-
-function aaForm() {
-  const fd = new FormData();
-  fd.append("run", RESULT.run);
-  fd.append("alert_idx", "0");
-  fd.append("location", "演示点位 · 禁烟区A");
-  return fd;
-}
-
-btnReport.onclick = async () => {
-  aaStatus.className = "aa-status busy";
-  aaStatus.textContent = "正在生成报告...";
-  try {
-    const r = await fetch("/api/report", { method: "POST", body: aaForm() });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.detail || r.status);
-    aaStatus.className = "aa-status ok";
-    aaStatus.innerHTML = `✓ 报告已生成 — <a href="${j.report_url}" target="_blank">打开 PDF</a>`;
-    window.open(j.report_url, "_blank");
-  } catch (e) {
-    aaStatus.className = "aa-status err";
-    aaStatus.textContent = "生成失败: " + e.message;
-  }
-};
-
-btnEmail.onclick = async () => {
-  aaStatus.className = "aa-status busy";
-  aaStatus.textContent = "正在生成报告并发送邮件...";
-  btnEmail.disabled = true;
-  try {
-    const r = await fetch("/api/alerting/send", { method: "POST", body: aaForm() });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.detail || r.status);
-    const em = j.results && j.results.email;
-    if (em && em.ok) {
-      aaStatus.className = "aa-status ok";
-      aaStatus.textContent = "✓ " + em.detail;
-    } else {
-      aaStatus.className = "aa-status err";
-      aaStatus.textContent = "邮件未发送: " + (em ? em.detail : "未知错误");
-    }
-  } catch (e) {
-    aaStatus.className = "aa-status err";
-    aaStatus.textContent = "发送失败: " + e.message;
-  } finally {
-    btnEmail.disabled = !emailReady;
-  }
-};
-
-// ---------- 上传分析 ----------
 const drop = document.getElementById("drop");
 const fileInput = document.createElement("input");
 fileInput.type = "file";

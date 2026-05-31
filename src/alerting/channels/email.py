@@ -52,15 +52,18 @@ class EmailChannel(Channel):
     def available(self) -> bool:
         return self.cfg.enabled and self.cfg.configured
 
-    def send(self, event: AlertEvent, pdf: Optional[Path] = None) -> dict:
-        if not self.available():
-            return {"ok": False, "detail": "邮件未配置(缺少 SMTP 账号/授权码/收件人)"}
-
+    def send(self, event: AlertEvent, pdf: Optional[Path] = None,
+             recipients: Optional[list] = None) -> dict:
         cfg = self.cfg
+        # 收件人: 优先用调用方传入的(前端填写的邮箱), 否则用配置里的默认收件人
+        to = [r.strip() for r in (recipients or cfg.recipients) if r and r.strip()]
+        if not (cfg.enabled and cfg.smtp_user and cfg.smtp_password and to):
+            return {"ok": False, "detail": "邮件未配置或未填写收件人"}
+
         msg = MIMEMultipart("related")
         msg["Subject"] = f"【安全告警】{event.title}"
         msg["From"] = formataddr((cfg.sender_name, cfg.smtp_user))
-        msg["To"] = ", ".join(cfg.recipients)
+        msg["To"] = ", ".join(to)
 
         # 内嵌截图
         shot = None
@@ -89,11 +92,11 @@ class EmailChannel(Channel):
                 server = smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=20)
                 server.starttls()
             server.login(cfg.smtp_user, cfg.smtp_password)
-            server.sendmail(cfg.smtp_user, cfg.recipients, msg.as_string())
+            server.sendmail(cfg.smtp_user, to, msg.as_string())
             try:
                 server.quit()   # 关闭失败不影响"已发送"结论
             except Exception:
                 pass
-            return {"ok": True, "detail": f"已发送至 {', '.join(cfg.recipients)}"}
+            return {"ok": True, "detail": f"已发送至 {', '.join(to)}"}
         except Exception as e:  # noqa: BLE001
             return {"ok": False, "detail": f"发送失败: {type(e).__name__}: {e}"}

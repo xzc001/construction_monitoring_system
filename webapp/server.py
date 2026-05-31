@@ -653,10 +653,17 @@ def panel_report(run: str = Form(...), alert_idx: int = Form(0),
 
 @app.post("/api/alerting/send")
 def alerting_send(run: str = Form(...), alert_idx: int = Form(0),
-                  location: str = Form("")):
-    """生成报告并通过已启用渠道(邮件)发送。"""
+                  location: str = Form(""), to_email: str = Form("")):
+    """生成报告并通过已启用渠道(邮件)发送。
+
+    to_email: 前端填写的收件邮箱(留空则用配置里的默认收件人)。
+    """
+    to_email = (to_email or "").strip()
+    if to_email and "@" not in to_email:
+        raise HTTPException(400, "收件邮箱格式不正确")
+    recipients = [to_email] if to_email else None
     event, pdf = _gen_report(run, alert_idx, location)
-    results = AlertDispatcher().dispatch(event, pdf=pdf)
+    results = AlertDispatcher().dispatch(event, pdf=pdf, recipients=recipients)
     return {"results": results, "report_url": f"/media/{run}/{pdf.name}"}
 
 

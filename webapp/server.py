@@ -107,6 +107,7 @@ MODULES = [
         "name": "违规吸烟检测",
         "tagline": "香烟 YOLO + 人脸/上半身校验, 滤掉塔吊管道误报",
         "status": "online",
+        "hidden": True,              # 暂不在首页展示(模块/路由/样本仍保留)
         "metrics": [
             {"label": "判定方式", "value": "香烟 YOLO + 上半身校验"},
             {"label": "类别", "value": "cigarette"},
@@ -155,6 +156,7 @@ MODULES = [
         "name": "电动车违规停放监测",
         "tagline": "划定消防/疏散通道禁停区, 电动车驶入停放并持续即告警",
         "status": "online",
+        "hidden": True,              # 暂不在首页展示(模块/路由/样本仍保留)
         "metrics": [
             {"label": "判定方式", "value": "电动车检测 + 禁停 ROI"},
             {"label": "类别", "value": "电动车 / 自行车"},
@@ -364,7 +366,8 @@ app = FastAPI(title="施工现场 AI 智能监控系统", lifespan=lifespan)
 
 @app.get("/api/modules")
 def get_modules():
-    return MODULES
+    # 带 hidden=True 的模块暂不在首页展示(代码/路由/样本仍保留, 翻标记即可恢复)
+    return [m for m in MODULES if not m.get("hidden")]
 
 
 @app.get("/api/samples")

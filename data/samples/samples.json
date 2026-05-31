@@ -58,5 +58,14 @@
     "video": "helmet_workshop.mp4",
     "helmet_conf": 0.40,
     "persist": 1.0
+  },
+  {
+    "id": "smoking_demo",
+    "module": "smoking",
+    "title": "违规吸烟演示",
+    "subtitle": "人员吸烟 → 香烟落在脸/手附近, 红框告警(已滤塔吊/标牌误报)",
+    "video": "smoking_demo.mp4",
+    "smoking_conf": 0.50,
+    "persist": 1.0
   }
 ]

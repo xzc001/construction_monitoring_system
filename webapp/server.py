@@ -45,6 +45,8 @@ from src.modules.intrusion import IntrusionConfig, IntrusionPipeline
 from src.modules.intrusion.incident import build_intrusion_event
 from src.modules.helmet import HelmetConfig, HelmetPipeline
 from src.modules.helmet.incident import build_helmet_event
+from src.modules.smoking import SmokingConfig, SmokingPipeline
+from src.modules.smoking.incident import build_smoking_event
 from src.alerting import AlertDispatcher
 from webapp.media import ensure_h264
 
@@ -92,8 +94,18 @@ MODULES = [
         ],
         "href": "/helmet",
     },
-    {"id": "smoking", "name": "违规吸烟检测", "tagline": "明火 / 吸烟行为识别",
-     "status": "planned", "metrics": [], "href": None},
+    {
+        "id": "smoking",
+        "name": "违规吸烟检测",
+        "tagline": "香烟 YOLO + 人脸/上半身校验, 滤掉塔吊管道误报",
+        "status": "online",
+        "metrics": [
+            {"label": "判定方式", "value": "香烟 YOLO + 上半身校验"},
+            {"label": "类别", "value": "cigarette"},
+            {"label": "误报抑制", "value": "框小 + 靠人 + 持续"},
+        ],
+        "href": "/smoking",
+    },
 ]
 
 STATE_CN = {
@@ -108,6 +120,9 @@ STATE_CN = {
     # 未戴安全帽模块
     "compliant": "合规 · 已戴安全帽",
     "violation": "违规 · 未戴安全帽",
+    # 违规吸烟模块
+    "no_smoking": "未见吸烟",
+    "smoking": "违规 · 检测到吸烟",
 }
 
 
@@ -196,6 +211,13 @@ def build_pipeline_for_sample(s: dict):
             require_person=s.get("require_person", True),
             min_person_coverage=s.get("min_coverage", 0.25))
         return HelmetPipeline(cfg)
+    if module == "smoking":
+        cfg = SmokingConfig(
+            smoking_conf=s.get("smoking_conf", 0.50),
+            persist_alert=s.get("persist", 1.0),
+            state_grace=s.get("grace", 1.0),
+            require_person=s.get("require_person", True))
+        return SmokingPipeline(cfg)
     raise ValueError(f"未知模块: {module}")
 
 
@@ -352,6 +374,28 @@ async def helmet_analyze(
     return {"job_id": job_id, "run": run}
 
 
+@app.post("/api/smoking/analyze")
+async def smoking_analyze(
+    smoking_conf: float = Form(0.50),
+    persist: float = Form(1.0),
+    file: UploadFile = File(...),
+):
+    suffix = Path(file.filename or "upload.mp4").suffix or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    cfg = SmokingConfig(smoking_conf=smoking_conf, persist_alert=persist)
+
+    job_id = uuid.uuid4().hex[:12]
+    run = f"web_{job_id}"
+    with _lock:
+        JOBS[job_id] = {"status": "running", "progress": 0.0, "run": run}
+    threading.Thread(target=_run_job,
+                     args=(job_id, SmokingPipeline(cfg), Path(tmp.name), run),
+                     daemon=True).start()
+    return {"job_id": job_id, "run": run}
+
+
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str):
     with _lock:
@@ -375,6 +419,7 @@ EVENT_BUILDERS = {
     "panel": build_panel_event,
     "intrusion": build_intrusion_event,
     "helmet": build_helmet_event,
+    "smoking": build_smoking_event,
 }
 
 
@@ -442,6 +487,11 @@ def intrusion_page():
 @app.get("/helmet")
 def helmet_page():
     return FileResponse(STATIC / "helmet.html")
+
+
+@app.get("/smoking")
+def smoking_page():
+    return FileResponse(STATIC / "smoking.html")
 
 
 app.mount("/media", StaticFiles(directory=str(RUNS)), name="media")

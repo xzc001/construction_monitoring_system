@@ -69,6 +69,16 @@
     "persist": 1.0
   },
   {
+    "id": "ebike_fire_demo",
+    "module": "fire",
+    "title": "电动车停放点烟火预警",
+    "subtitle": "电动车锂电池起火 → 烟雾/明火检测预警(真实监控画面)",
+    "video": "ebike_fire_demo.mp4",
+    "fire_conf": 0.30,
+    "grace": 1.5,
+    "persist": 1.0
+  },
+  {
     "id": "vest_demo",
     "module": "vest",
     "title": "未穿反光衣演示",

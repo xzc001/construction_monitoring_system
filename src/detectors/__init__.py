@@ -6,5 +6,6 @@
 from .base import BaseDetector
 from .person import PersonDetector
 from .panel_door import PanelDoorDetector
+from .helmet import HelmetDetector
 
-__all__ = ["BaseDetector", "PersonDetector", "PanelDoorDetector"]
+__all__ = ["BaseDetector", "PersonDetector", "PanelDoorDetector", "HelmetDetector"]

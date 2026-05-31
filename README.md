@@ -3,7 +3,7 @@
 基于计算机视觉的施工现场安全监控平台。无需改造现有摄像头,以**业务规则驱动告警**——
 只在真正的违规发生时报警,而不是"看到就报"。
 
-本仓库是一个**可扩展的功能平台**:已上线 **配电箱门未关监测** 与 **危险区域闯入** 两个模块,
+本仓库是一个**可扩展的功能平台**:已上线 **配电箱门未关监测**、**危险区域闯入**、**未戴安全帽识别** 三个模块,
 其他开发者可按下方《新增功能模块》指南,在同一个网站上挂载新的检测能力。
 
 ![能力矩阵](docs/preview-home.png)
@@ -121,6 +121,33 @@ uv run python run_intrusion.py --video data/samples/panel_storyline.mp4 \
 
 ---
 
+## 未戴安全帽模块的业务逻辑
+
+用自训练的安全帽 YOLO(`models/helmet_best.pt`,类别 `hardhat`/`no-hardhat`)直接判定
+每个头部"戴/未戴",再做一道人体校验剔除假阳,只在真正违规且持续时才告警:
+
+| 状态 | 含义 | 处理 |
+|---|---|---|
+| 🟢 已戴安全帽 | 合规 | 不告警 |
+| 🔴 未戴安全帽 + 持续 | 违规 | **告警** |
+
+关键实现:
+- **直接判定**:安全帽模型本身就输出"戴帽/未戴帽"头框,无需"人+头+帽"组合推断。
+- **人体二次校验**:未戴帽头框须落在某个 `person` 框内(覆盖率阈值)才算数,
+  滤掉帽形物体/背景误检(`require_person` 可关)。
+- **防误报**:未戴帽持续 `persist_alert` 秒才告警 + `HelmetStateSmoother` 时间迟滞,
+  消除瞬时漏检导致的时间轴闪烁。
+
+命令行直接出标注视频:
+
+```bash
+uv run python run_helmet.py --video data/samples/helmet_workshop.mp4 --out helmet_demo
+```
+
+> 远景小目标可适当调低 `--helmet_conf`;模型在近-中景佩戴判定上最稳。
+
+---
+
 ## 告警动作(事故报告 / 邮件)
 
 检测到告警后,系统可执行告警动作。当前已实现:
@@ -161,24 +188,28 @@ QQ 邮箱要用 **「授权码」**(不是登录密码),获取方式:
 common/
 ├── run_panel.py              配电箱模块命令行入口
 ├── run_intrusion.py          危险区域闯入模块命令行入口
+├── run_helmet.py             未戴安全帽模块命令行入口
 ├── pyproject.toml / uv.lock  uv 依赖管理
 ├── yolov8n.pt                人体检测模型(随仓库提供)
+├── models/
+│   └── helmet_best.pt        安全帽检测模型(hardhat/no-hardhat, 随仓库提供)
 ├── config/
 │   └── alerting.example.yaml 告警渠道配置模板(复制为 alerting.yaml 填密钥)
 ├── data/samples/             内置演示样本(源视频 + samples.json 清单, 含 module 字段)
 ├── webapp/
 │   ├── server.py             FastAPI 后端(API + 静态托管 + 后台分析)
 │   ├── media.py              mp4v → H.264 转码(浏览器播放)
-│   └── static/               前端(index 首页 / panel / intrusion 模块页 / css / js)
+│   └── static/               前端(index 首页 / panel / intrusion / helmet 模块页 / css / js)
 ├── src/
 │   ├── types.py              Detection / Violation / Alert 数据结构
 │   ├── visualizer.py         画框 + 中文渲染 + HUD + 多色 ROI
-│   ├── detectors/            base / person / panel_door
+│   ├── detectors/            base / person / panel_door / helmet
 │   ├── rules/                通用基建: geometry / roi(RoiZone) / tracker
 │   ├── alerting/             告警动作层: 事件/报告/邮件/分发器(通用, 各模块复用)
 │   └── modules/
 │       ├── panel/            ★ 配电箱模块(自包含: config/detector/rules/pipeline/incident)
-│       └── intrusion/        ★ 危险区域闯入模块(自包含: config/rules/pipeline/incident)
+│       ├── intrusion/        ★ 危险区域闯入模块(自包含: config/rules/pipeline/incident)
+│       └── helmet/           ★ 未戴安全帽模块(自包含: config/rules/pipeline/incident)
 └── runs/                     运行产物(gitignore, 不入库)
 ```
 
@@ -269,6 +300,7 @@ common/
 | GET | `/api/result/{run}` | 某次分析结果(时间轴 / 告警 / 视频地址, 通用) |
 | POST | `/api/panel/analyze` | 配电箱:上传视频 → 后台分析,返回 `job_id` |
 | POST | `/api/intrusion/analyze` | 危险区域闯入:上传视频 → 后台分析,返回 `job_id` |
+| POST | `/api/helmet/analyze` | 未戴安全帽:上传视频 → 后台分析,返回 `job_id` |
 | GET | `/api/jobs/{job_id}` | 轮询分析进度(通用) |
 | GET | `/api/alerting/status` | 各告警渠道是否已配置可用 |
 | POST | `/api/report` | 生成事故报告 PDF(按 run 所属模块自动选模板) |

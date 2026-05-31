@@ -43,6 +43,8 @@ from src.modules.panel import PanelConfig, PanelPipeline
 from src.modules.panel.incident import build_panel_event
 from src.modules.intrusion import IntrusionConfig, IntrusionPipeline
 from src.modules.intrusion.incident import build_intrusion_event
+from src.modules.helmet import HelmetConfig, HelmetPipeline
+from src.modules.helmet.incident import build_helmet_event
 from src.alerting import AlertDispatcher
 from webapp.media import ensure_h264
 
@@ -78,8 +80,18 @@ MODULES = [
         ],
         "href": "/intrusion",
     },
-    {"id": "helmet", "name": "未戴安全帽识别", "tagline": "自训练 YOLO 检测安全帽佩戴",
-     "status": "planned", "metrics": [], "href": None},
+    {
+        "id": "helmet",
+        "name": "未戴安全帽识别",
+        "tagline": "自训练 YOLO 直接判定戴帽/未戴帽, 人体二次校验滤假阳",
+        "status": "online",
+        "metrics": [
+            {"label": "判定方式", "value": "安全帽 YOLO + 人体校验"},
+            {"label": "类别", "value": "已戴 / 未戴"},
+            {"label": "误报抑制", "value": "持续时长 + 时间迟滞"},
+        ],
+        "href": "/helmet",
+    },
     {"id": "smoking", "name": "违规吸烟检测", "tagline": "明火 / 吸烟行为识别",
      "status": "planned", "metrics": [], "href": None},
 ]
@@ -93,6 +105,9 @@ STATE_CN = {
     "clear": "安全 · 无人闯入",
     "warning": "警戒 · 接近危险区",
     "intrusion": "闯入 · 危险区域有人",
+    # 未戴安全帽模块
+    "compliant": "合规 · 已戴安全帽",
+    "violation": "违规 · 未戴安全帽",
 }
 
 
@@ -173,6 +188,14 @@ def build_pipeline_for_sample(s: dict):
             s["zones"], persist_alert=s.get("persist", 1.5),
             state_grace=s.get("grace", 1.0))
         return IntrusionPipeline(cfg)
+    if module == "helmet":
+        cfg = HelmetConfig(
+            helmet_conf=s.get("helmet_conf", 0.40),
+            persist_alert=s.get("persist", 1.0),
+            state_grace=s.get("grace", 1.0),
+            require_person=s.get("require_person", True),
+            min_person_coverage=s.get("min_coverage", 0.25))
+        return HelmetPipeline(cfg)
     raise ValueError(f"未知模块: {module}")
 
 
@@ -307,6 +330,28 @@ async def intrusion_analyze(
     return {"job_id": job_id, "run": run}
 
 
+@app.post("/api/helmet/analyze")
+async def helmet_analyze(
+    helmet_conf: float = Form(0.40),
+    persist: float = Form(1.0),
+    file: UploadFile = File(...),
+):
+    suffix = Path(file.filename or "upload.mp4").suffix or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    cfg = HelmetConfig(helmet_conf=helmet_conf, persist_alert=persist)
+
+    job_id = uuid.uuid4().hex[:12]
+    run = f"web_{job_id}"
+    with _lock:
+        JOBS[job_id] = {"status": "running", "progress": 0.0, "run": run}
+    threading.Thread(target=_run_job,
+                     args=(job_id, HelmetPipeline(cfg), Path(tmp.name), run),
+                     daemon=True).start()
+    return {"job_id": job_id, "run": run}
+
+
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str):
     with _lock:
@@ -329,6 +374,7 @@ def alerting_status():
 EVENT_BUILDERS = {
     "panel": build_panel_event,
     "intrusion": build_intrusion_event,
+    "helmet": build_helmet_event,
 }
 
 
@@ -391,6 +437,11 @@ def panel_page():
 @app.get("/intrusion")
 def intrusion_page():
     return FileResponse(STATIC / "intrusion.html")
+
+
+@app.get("/helmet")
+def helmet_page():
+    return FileResponse(STATIC / "helmet.html")
 
 
 app.mount("/media", StaticFiles(directory=str(RUNS)), name="media")

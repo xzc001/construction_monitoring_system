@@ -1,0 +1,18 @@
+# 构建镜像时排除的内容
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.git/
+.vscode/
+.idea/
+*.tmp
+
+# 密钥配置绝不入镜像(只保留示例)
+config/alerting.yaml
+
+# 大文件: 源样本视频(已有预渲染结果即可, 启动用不到)
+data/samples/*.mp4
+
+# 预渲染结果里的 mp4v 原始标注视频(浏览器用 web.mp4, 不需要它)
+runs/**/annotated.mp4

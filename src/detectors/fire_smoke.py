@@ -17,9 +17,11 @@ class FireSmokeDetector(BaseDetector):
     """识别 fire(明火) / smoke(烟雾)。"""
 
     def __init__(self, model_path: str | Path | None = None,
-                 conf: float = 0.40, device=None, imgsz: int = 1280):
+                 conf: float = 0.40, device=None, imgsz: int = 1280,
+                 include_fog: bool = False):
         super().__init__(model_path=str(model_path or _DEFAULT_WEIGHTS),
                          conf=conf, device=device, name="fire", imgsz=imgsz)
+        self.include_fog = include_fog          # True 时把 fog 也当烟雾(浓烟糊屏的火灾片)
 
     def _wrap_box(self, label, conf, bbox):
         low = label.lower().replace("_", "-")
@@ -27,4 +29,6 @@ class FireSmokeDetector(BaseDetector):
             return Detection(label="fire", conf=conf, bbox=bbox, source="fire")
         if "smoke" in low:                      # fire-smoke / factory-smoke
             return Detection(label="smoke", conf=conf, bbox=bbox, source="fire")
-        return None                             # fog / sol 等噪声类丢弃
+        if low == "fog" and self.include_fog:   # 弥漫浓烟常被标为 fog, 按需计入
+            return Detection(label="smoke", conf=conf, bbox=bbox, source="fire")
+        return None                             # fog(默认) / sol 等噪声类丢弃

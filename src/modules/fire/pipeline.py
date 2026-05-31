@@ -27,7 +27,8 @@ class FirePipeline:
         self.cfg = config
         self.detector = FireSmokeDetector(
             model_path=config.model_path, conf=config.fire_conf,
-            device=config.device, imgsz=config.imgsz)
+            device=config.device, imgsz=config.imgsz,
+            include_fog=config.include_fog)
 
     def process_video(self, video_in: Path, out_dir: Path, progress_cb=None) -> dict:
         video_in = Path(video_in)

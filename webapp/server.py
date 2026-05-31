@@ -272,7 +272,8 @@ def build_pipeline_for_sample(s: dict):
     if module == "fire":
         cfg = FireConfig(fire_conf=s.get("fire_conf", 0.40),
                          persist_alert=s.get("persist", 1.0),
-                         state_grace=s.get("grace", 1.0))
+                         state_grace=s.get("grace", 1.0),
+                         include_fog=s.get("include_fog", False))
         return FirePipeline(cfg)
     if module == "vest":
         cfg = VestConfig(vest_conf=s.get("vest_conf", 0.40),

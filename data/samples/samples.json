@@ -60,6 +60,17 @@
     "persist": 1.0
   },
   {
+    "id": "ebike_park_fire",
+    "module": "fire",
+    "title": "电动车停放区起火·烟雾预警",
+    "subtitle": "电动车停放点起火 → 浓烟弥漫,实时烟雾检测预警(真实监控画面)",
+    "video": "ebike_park_fire.mp4",
+    "fire_conf": 0.30,
+    "grace": 1.5,
+    "persist": 1.0,
+    "include_fog": true
+  },
+  {
     "id": "ebike_fire_demo",
     "module": "fire",
     "title": "电动车停放点烟火预警",

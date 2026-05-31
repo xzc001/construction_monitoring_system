@@ -8,6 +8,8 @@ from .person import PersonDetector
 from .panel_door import PanelDoorDetector
 from .helmet import HelmetDetector
 from .smoking import SmokingDetector
+from .fire_smoke import FireSmokeDetector
+from .vest import VestDetector
 
 __all__ = ["BaseDetector", "PersonDetector", "PanelDoorDetector",
-           "HelmetDetector", "SmokingDetector"]
+           "HelmetDetector", "SmokingDetector", "FireSmokeDetector", "VestDetector"]

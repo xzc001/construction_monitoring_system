@@ -3,8 +3,11 @@
 基于计算机视觉的施工现场安全监控平台。无需改造现有摄像头,以**业务规则驱动告警**——
 只在真正的违规发生时报警,而不是"看到就报"。
 
-本仓库是一个**可扩展的功能平台**:已上线 **配电箱门未关监测**、**危险区域闯入**、**未戴安全帽识别**、**违规吸烟检测** 四个模块,
+本仓库是一个**可扩展的功能平台**:已上线 **配电箱门未关监测**、**危险区域闯入**、**未戴安全帽识别**、**违规吸烟检测** 四个模块(含内置演示);
+另有 **烟雾明火识别**、**未穿反光衣识别** 两项**模型已就绪**(可上传视频实时检测,待现场素材补内置演示)。
 其他开发者可按下方《新增功能模块》指南,在同一个网站上挂载新的检测能力。
+
+> **卡片三种状态**:🟢 已上线(有内置演示)· 🟡 模型就绪(模型可用、可上传试用,暂无 canned demo)· ⚪ 规划中。
 
 ![能力矩阵](docs/preview-home.png)
 
@@ -217,11 +220,14 @@ common/
 ├── run_intrusion.py          危险区域闯入模块命令行入口
 ├── run_helmet.py             未戴安全帽模块命令行入口
 ├── run_smoking.py            违规吸烟模块命令行入口
+├── run_fire.py / run_vest.py 烟雾明火 / 未穿反光衣 命令行入口
 ├── pyproject.toml / uv.lock  uv 依赖管理
 ├── yolov8n.pt                人体检测模型(随仓库提供)
-├── models/
-│   ├── helmet_best.pt        安全帽检测模型(hardhat/no-hardhat, 随仓库提供)
-│   └── smoking_enos123_yolov11.pt  香烟检测模型(cigarette, 随仓库提供)
+├── models/                   各模块权重(随仓库提供)
+│   ├── helmet_best.pt        安全帽(hardhat/no-hardhat)
+│   ├── smoking_enos123_yolov11.pt  香烟(cigarette)
+│   ├── fire_smoke.pt         烟雾明火(fire/smoke)
+│   └── ppe_vest.pt           反光衣(Safety Vest/NO-Safety Vest 等)
 ├── config/
 │   └── alerting.example.yaml 告警渠道配置模板(复制为 alerting.yaml 填密钥)
 ├── data/samples/             内置演示样本(源视频 + samples.json 清单, 含 module 字段)
@@ -232,14 +238,16 @@ common/
 ├── src/
 │   ├── types.py              Detection / Violation / Alert 数据结构
 │   ├── visualizer.py         画框 + 中文渲染 + HUD + 多色 ROI
-│   ├── detectors/            base / person / panel_door / helmet / smoking
+│   ├── detectors/            base / person / panel_door / helmet / smoking / fire_smoke / vest
 │   ├── rules/                通用基建: geometry / roi(RoiZone) / tracker
 │   ├── alerting/             告警动作层: 事件/报告/邮件/分发器(通用, 各模块复用)
 │   └── modules/
 │       ├── panel/            ★ 配电箱模块(自包含: config/detector/rules/pipeline/incident)
 │       ├── intrusion/        ★ 危险区域闯入模块(自包含: config/rules/pipeline/incident)
 │       ├── helmet/           ★ 未戴安全帽模块(自包含: config/rules/pipeline/incident)
-│       └── smoking/          ★ 违规吸烟模块(自包含: config/rules/pipeline/incident)
+│       ├── smoking/          ★ 违规吸烟模块(自包含: config/rules/pipeline/incident)
+│       ├── fire/             ★ 烟雾明火模块(模型就绪, 自包含)
+│       └── vest/             ★ 未穿反光衣模块(模型就绪, 自包含)
 └── runs/                     运行产物(gitignore, 不入库)
 ```
 
@@ -332,6 +340,8 @@ common/
 | POST | `/api/intrusion/analyze` | 危险区域闯入:上传视频 → 后台分析,返回 `job_id` |
 | POST | `/api/helmet/analyze` | 未戴安全帽:上传视频 → 后台分析,返回 `job_id` |
 | POST | `/api/smoking/analyze` | 违规吸烟:上传视频 → 后台分析,返回 `job_id` |
+| POST | `/api/fire/analyze` | 烟雾明火:上传视频 → 后台分析,返回 `job_id` |
+| POST | `/api/vest/analyze` | 未穿反光衣:上传视频 → 后台分析,返回 `job_id` |
 | GET | `/api/jobs/{job_id}` | 轮询分析进度(通用) |
 | GET | `/api/alerting/status` | 各告警渠道是否已配置可用 |
 | POST | `/api/report` | 生成事故报告 PDF(按 run 所属模块自动选模板) |

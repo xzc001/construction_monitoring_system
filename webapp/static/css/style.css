@@ -256,9 +256,10 @@ a { color: inherit; text-decoration: none; }
   display: inline-flex; align-items: center; gap: 7px;
 }
 .badge.online { color: var(--green); border-color: rgba(47,217,130,.4); background: var(--green-soft); }
+.badge.ready { color: var(--amber); border-color: rgba(255,176,32,.4); background: var(--amber-soft); }
 .badge.planned { color: var(--text-dim); border-color: var(--border); }
 .badge .d { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.badge.online .d { animation: pulse 2s infinite; }
+.badge.online .d, .badge.ready .d { animation: pulse 2s infinite; }
 
 .mod-metrics { display: flex; gap: 22px; margin-top: 18px; flex-wrap: wrap; }
 .mod-metrics .m .v { font-family: var(--font-mono); font-size: 13px; color: var(--amber); }
@@ -281,6 +282,14 @@ a { color: inherit; text-decoration: none; }
 .mod-card.is-online:hover::before,
 .mod-card.is-online:hover::after { border-color: var(--amber); }
 .mod-card.is-online:hover .enter .arr { transform: translateX(5px); }
+
+.mod-card.is-ready { cursor: pointer; }
+.mod-card.is-ready:hover {
+  transform: translateY(-4px);
+  border-color: var(--amber);
+  box-shadow: 0 24px 50px -28px rgba(255, 176, 32, 0.5);
+}
+.mod-card.is-ready:hover .enter .arr { transform: translateX(5px); }
 
 .mod-card.is-planned { opacity: 0.62; }
 .mod-card.is-planned .soon {

@@ -47,6 +47,10 @@ from src.modules.helmet import HelmetConfig, HelmetPipeline
 from src.modules.helmet.incident import build_helmet_event
 from src.modules.smoking import SmokingConfig, SmokingPipeline
 from src.modules.smoking.incident import build_smoking_event
+from src.modules.fire import FireConfig, FirePipeline
+from src.modules.fire.incident import build_fire_event
+from src.modules.vest import VestConfig, VestPipeline
+from src.modules.vest.incident import build_vest_event
 from src.alerting import AlertDispatcher
 from webapp.media import ensure_h264
 
@@ -106,6 +110,30 @@ MODULES = [
         ],
         "href": "/smoking",
     },
+    {
+        "id": "fire",
+        "name": "烟雾明火识别",
+        "tagline": "YOLO 检测火焰/烟雾; 模型已就绪, 待现场素材补内置演示",
+        "status": "ready",
+        "metrics": [
+            {"label": "判定方式", "value": "烟火 YOLO"},
+            {"label": "类别", "value": "明火 / 烟雾"},
+            {"label": "状态", "value": "可上传试用"},
+        ],
+        "href": "/fire",
+    },
+    {
+        "id": "vest",
+        "name": "未穿反光衣识别",
+        "tagline": "PPE YOLO 检测反光衣佩戴 + 人体校验; 模型已就绪, 待素材",
+        "status": "ready",
+        "metrics": [
+            {"label": "判定方式", "value": "PPE YOLO + 人体校验"},
+            {"label": "类别", "value": "已穿 / 未穿"},
+            {"label": "状态", "value": "可上传试用"},
+        ],
+        "href": "/vest",
+    },
 ]
 
 STATE_CN = {
@@ -123,6 +151,12 @@ STATE_CN = {
     # 违规吸烟模块
     "no_smoking": "未见吸烟",
     "smoking": "违规 · 检测到吸烟",
+    # 烟雾明火模块
+    "no_fire": "未见烟火",
+    "fire_smoke": "预警 · 烟雾/明火",
+    # 未穿反光衣模块
+    "vest_ok": "合规 · 已穿反光衣",
+    "no_vest": "违规 · 未穿反光衣",
 }
 
 
@@ -218,6 +252,17 @@ def build_pipeline_for_sample(s: dict):
             state_grace=s.get("grace", 1.0),
             require_person=s.get("require_person", True))
         return SmokingPipeline(cfg)
+    if module == "fire":
+        cfg = FireConfig(fire_conf=s.get("fire_conf", 0.40),
+                         persist_alert=s.get("persist", 1.0),
+                         state_grace=s.get("grace", 1.0))
+        return FirePipeline(cfg)
+    if module == "vest":
+        cfg = VestConfig(vest_conf=s.get("vest_conf", 0.40),
+                         persist_alert=s.get("persist", 1.0),
+                         state_grace=s.get("grace", 1.0),
+                         require_person=s.get("require_person", True))
+        return VestPipeline(cfg)
     raise ValueError(f"未知模块: {module}")
 
 
@@ -396,6 +441,42 @@ async def smoking_analyze(
     return {"job_id": job_id, "run": run}
 
 
+@app.post("/api/fire/analyze")
+async def fire_analyze(fire_conf: float = Form(0.40), persist: float = Form(1.0),
+                       file: UploadFile = File(...)):
+    suffix = Path(file.filename or "upload.mp4").suffix or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    cfg = FireConfig(fire_conf=fire_conf, persist_alert=persist)
+    job_id = uuid.uuid4().hex[:12]
+    run = f"web_{job_id}"
+    with _lock:
+        JOBS[job_id] = {"status": "running", "progress": 0.0, "run": run}
+    threading.Thread(target=_run_job,
+                     args=(job_id, FirePipeline(cfg), Path(tmp.name), run),
+                     daemon=True).start()
+    return {"job_id": job_id, "run": run}
+
+
+@app.post("/api/vest/analyze")
+async def vest_analyze(vest_conf: float = Form(0.40), persist: float = Form(1.0),
+                       file: UploadFile = File(...)):
+    suffix = Path(file.filename or "upload.mp4").suffix or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    cfg = VestConfig(vest_conf=vest_conf, persist_alert=persist)
+    job_id = uuid.uuid4().hex[:12]
+    run = f"web_{job_id}"
+    with _lock:
+        JOBS[job_id] = {"status": "running", "progress": 0.0, "run": run}
+    threading.Thread(target=_run_job,
+                     args=(job_id, VestPipeline(cfg), Path(tmp.name), run),
+                     daemon=True).start()
+    return {"job_id": job_id, "run": run}
+
+
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str):
     with _lock:
@@ -420,6 +501,8 @@ EVENT_BUILDERS = {
     "intrusion": build_intrusion_event,
     "helmet": build_helmet_event,
     "smoking": build_smoking_event,
+    "fire": build_fire_event,
+    "vest": build_vest_event,
 }
 
 
@@ -492,6 +575,16 @@ def helmet_page():
 @app.get("/smoking")
 def smoking_page():
     return FileResponse(STATIC / "smoking.html")
+
+
+@app.get("/fire")
+def fire_page():
+    return FileResponse(STATIC / "fire.html")
+
+
+@app.get("/vest")
+def vest_page():
+    return FileResponse(STATIC / "vest.html")
 
 
 app.mount("/media", StaticFiles(directory=str(RUNS)), name="media")

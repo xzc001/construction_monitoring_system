@@ -167,6 +167,9 @@ HUD_KEY_CN = {
     "cig": "烟",
     "roi": "闯入",
     "panel": "柜门",
+    "fire": "明火",
+    "smoke": "烟雾",
+    "no_vest": "未穿",
 }
 
 

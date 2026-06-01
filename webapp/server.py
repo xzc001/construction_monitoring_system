@@ -107,7 +107,6 @@ MODULES = [
         "name": "违规吸烟检测",
         "tagline": "香烟 YOLO + 人脸/上半身校验, 滤掉塔吊管道误报",
         "status": "online",
-        "hidden": True,              # 暂不在首页展示(模块/路由/样本仍保留)
         "metrics": [
             {"label": "判定方式", "value": "香烟 YOLO + 上半身校验"},
             {"label": "类别", "value": "cigarette"},
@@ -156,7 +155,6 @@ MODULES = [
         "name": "电动车违规停放监测",
         "tagline": "划定消防/疏散通道禁停区, 电动车驶入停放并持续即告警",
         "status": "online",
-        "hidden": True,              # 暂不在首页展示(模块/路由/样本仍保留)
         "metrics": [
             {"label": "判定方式", "value": "电动车检测 + 禁停 ROI"},
             {"label": "类别", "value": "电动车 / 自行车"},
